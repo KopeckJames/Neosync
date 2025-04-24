@@ -93,13 +93,18 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
     const now = new Date();
+    
+    // Create the user with types that match the schema
     const user: User = {
-      ...insertUser, 
-      id, 
+      id,
+      username: insertUser.username,
+      password: insertUser.password,
+      displayName: insertUser.displayName,
+      avatarColor: insertUser.avatarColor || null,
       isOnline: true,
-      lastSeen: now,
-      avatarColor: insertUser.avatarColor || null // Ensure avatarColor is not undefined
+      lastSeen: now
     };
+    
     this.users.set(id, user);
     return user;
   }
@@ -225,7 +230,21 @@ export class MemStorage implements IStorage {
   // Message methods
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const id = this.messageIdCounter++;
-    const message: Message = { ...insertMessage, id };
+    
+    // Create message with fully specified types to match the schema
+    const message: Message = {
+      id,
+      conversationId: insertMessage.conversationId,
+      senderId: insertMessage.senderId,
+      receiverId: insertMessage.receiverId,
+      content: insertMessage.content,
+      timestamp: insertMessage.timestamp,
+      isEncrypted: insertMessage.isEncrypted === undefined ? true : insertMessage.isEncrypted,
+      encryptionType: insertMessage.encryptionType || null,
+      nonce: insertMessage.nonce || null,
+      isRead: insertMessage.isRead === undefined ? false : insertMessage.isRead
+    };
+    
     this.messages.set(id, message);
     
     // Update the conversation timestamp

@@ -7,6 +7,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
 import { ZodError } from "zod";
+import { generateUserKeys } from "./encryption";
 
 declare global {
   namespace Express {
@@ -117,6 +118,16 @@ export function setupAuth(app: Express) {
         ...userData,
         password: await hashPassword(userData.password),
       });
+
+      // Generate encryption keys for the user
+      try {
+        const keyBundle = await generateUserKeys(user.id);
+        await storage.storeUserKey(user.id, keyBundle.publicKey);
+        console.log(`Generated and stored encryption keys for user ${user.id}`);
+      } catch (error) {
+        console.error('Error generating encryption keys:', error);
+        // Continue with login even if key generation fails
+      }
 
       // Log user in
       req.login(user, (err) => {
