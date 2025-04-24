@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { MessageWithUser } from "@shared/schema";
+import { MessageWithUser, AttachmentWithThumbnail } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { Lock } from "lucide-react";
@@ -116,7 +116,7 @@ export function MessageBubble({
                   <div className="mt-2">
                     {message.attachments.map((attachment) => {
                       // Transform attachment to AttachmentWithThumbnail if needed
-                      const attachmentWithUrl: AttachmentWithThumbnail = {
+                      const attachmentWithUrl = {
                         ...attachment,
                         downloadUrl: attachment.filePath,
                         thumbnailUrl: attachment.thumbnailPath || undefined

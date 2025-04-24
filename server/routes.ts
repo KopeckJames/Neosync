@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import { WebSocketServer, WebSocket } from "ws";
@@ -44,14 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Set cache control headers
     res.set('Cache-Control', 'private, max-age=3600'); // 1 hour cache
     next();
-  }, (req, res, next) => {
-    res.sendFile(path.join(process.cwd(), req.path), (err) => {
-      if (err) {
-        console.error('Error serving file:', err);
-        res.status(404).send('File not found');
-      }
-    });
-  });
+  }, express.static(path.join(process.cwd(), 'uploads')));
 
   const httpServer = createServer(app);
   
@@ -344,7 +337,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Send a message
+  // File Upload Routes - moved to a separate section below
+  
+  // Send a message with optional attachment
   app.post('/api/messages', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
     
@@ -446,7 +441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const thumbnailPath = await generateThumbnail(file.path);
       
       // Create the message first
-      const messageData = {
+      const messageData = insertMessageSchema.parse({
         conversationId: conversation.id,
         senderId: currentUser.id,
         receiverId: Number(receiverId),
@@ -454,14 +449,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messageType,
         isEncrypted: false, // Files are not encrypted in this implementation
         timestamp: new Date(),
-        isRead: false,
         hasAttachment: true
-      };
+      });
       
       const message = await storage.createMessage(messageData);
       
       // Create the attachment record
-      const attachmentData = {
+      const attachmentData = insertAttachmentSchema.parse({
         messageId: message.id,
         filename: file.originalname,
         fileType: file.mimetype,
@@ -470,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         thumbnailPath: thumbnailPath ? getRelativePath(thumbnailPath) : null,
         isEncrypted: false,
         nonce: null
-      };
+      });
       
       const attachment = await storage.createAttachment(attachmentData);
       
