@@ -79,10 +79,34 @@ export default {
             height: "0",
           },
         },
+        "typing-dot": {
+          "0%": {
+            transform: "translateY(0px)",
+            opacity: "0.4",
+          },
+          "50%": {
+            transform: "translateY(-4px)",
+            opacity: "0.8",
+          },
+          "100%": {
+            transform: "translateY(0px)",
+            opacity: "0.4",
+          },
+        },
+        "fade-in": {
+          "0%": {
+            opacity: "0",
+          },
+          "100%": {
+            opacity: "1",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "typing-dot": "typing-dot 1s infinite ease-in-out",
+        "fade-in": "fade-in 0.3s ease-out",
       },
     },
   },

@@ -69,6 +69,15 @@ export function Conversation({
     }
   });
   
+  // Cleanup typing indicator when conversation changes
+  useEffect(() => {
+    setIsContactTyping(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, [conversation.id]);
+  
   // Fetch messages for this conversation
   const { 
     data: messages = [],
