@@ -36,7 +36,13 @@ export function Conversation({
 
   const { contact } = conversation;
   
-  // Use websocket for typing indicators
+  // State for incoming calls
+  const [incomingCall, setIncomingCall] = useState<{
+    sessionId: string;
+    mediaType: 'audio' | 'video' | 'both';
+  } | null>(null);
+  
+  // Use websocket for typing indicators and call signaling
   const { sendMessage } = useWebSocket({
     onMessage: (message) => {
       // Handle typing indicator messages
@@ -67,6 +73,54 @@ export function Conversation({
           clearTimeout(typingTimeoutRef.current);
           typingTimeoutRef.current = null;
         }
+      }
+      
+      // Handle incoming call request
+      else if (message.type === 'call-request' &&
+               message.from === contact.id &&
+               message.to === currentUser.id) {
+        
+        setIncomingCall({
+          sessionId: message.sessionId,
+          mediaType: message.mediaType || 'audio'
+        });
+        
+        // Show incoming call toast
+        const { IncomingCallToastHelper } = require('./incoming-call-toast-helper');
+        
+        // Render the toast
+        IncomingCallToastHelper({
+          userId: currentUser.id,
+          contactId: contact.id,
+          contactName: contact.displayName,
+          contactAvatar: contact.avatarColor,
+          sessionId: message.sessionId,
+          mediaType: message.mediaType || 'audio',
+          onAccept: () => {
+            // Open call dialog with answer mode
+            // Call will be answered when dialog opens
+            setIncomingCall(null);
+          },
+          onDecline: () => {
+            // Send decline message through websocket
+            sendMessage({
+              type: 'call-rejected',
+              contactId: contact.id,
+              sessionId: message.sessionId,
+              reason: 'Call declined by user'
+            });
+            
+            setIncomingCall(null);
+          }
+        });
+      }
+      
+      // Handle call ended
+      else if (message.type === 'call-ended' &&
+               message.from === contact.id &&
+               message.to === currentUser.id) {
+        
+        setIncomingCall(null);
       }
     }
   });
@@ -194,6 +248,7 @@ export function Conversation({
             contactId={contact.id}
             contactName={contact.displayName}
             contactAvatar={contact.avatarColor}
+            incomingCall={incomingCall}
           />
           <Button variant="ghost" size="icon" className="rounded-full">
             <Info className="h-5 w-5 text-primary" />

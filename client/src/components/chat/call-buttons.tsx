@@ -36,8 +36,8 @@ export function CallButtons({
   const { toast } = useToast();
   
   // Check if browser supports WebRTC
-  const isWebRTCSupported = () => {
-    return (
+  const checkWebRTCSupport = () => {
+    return !!(
       navigator.mediaDevices &&
       navigator.mediaDevices.getUserMedia &&
       window.RTCPeerConnection
@@ -46,7 +46,7 @@ export function CallButtons({
   
   // Start a new call
   const startCall = (type: 'audio' | 'video') => {
-    if (!isWebRTCSupported()) {
+    if (!checkWebRTCSupport()) {
       toast({
         title: 'Your browser does not support video calls',
         description: 'Please use a modern browser like Chrome, Firefox, or Safari',

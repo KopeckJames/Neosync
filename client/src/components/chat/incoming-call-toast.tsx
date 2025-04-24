@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Phone, Video, Check, X } from "lucide-react";
 
@@ -25,6 +25,10 @@ export function showIncomingCallToast({
   onDecline
 }: IncomingCallToastProps) {
   // Create and show the toast notification
+  const { toast } = useToast();
+  
+  const toastId = 'incoming-call-' + sessionId;
+  
   toast({
     title: `Incoming ${mediaType === 'video' ? 'Video' : 'Audio'} Call`,
     description: (
@@ -44,7 +48,10 @@ export function showIncomingCallToast({
             className="h-8 px-2 text-red-500"
             onClick={() => {
               onDecline();
-              toast.dismiss('incoming-call');
+              toast({
+                id: toastId,
+                title: "Call declined",
+              });
             }}
           >
             <X className="mr-1 h-4 w-4" />
@@ -57,7 +64,10 @@ export function showIncomingCallToast({
             className="h-8 px-2 text-white bg-green-500 hover:bg-green-600"
             onClick={() => {
               onAccept();
-              toast.dismiss('incoming-call');
+              toast({
+                id: toastId,
+                title: "Call accepted",
+              });
             }}
           >
             <Check className="mr-1 h-4 w-4" />
@@ -76,6 +86,5 @@ export function showIncomingCallToast({
       </div>
     ),
     duration: 30000, // 30 seconds
-    id: 'incoming-call'
   });
 }
