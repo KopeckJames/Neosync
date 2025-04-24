@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test File Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .button {
+            padding: 10px 15px;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+        .hidden {
+            display: none;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0fff0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #fff0f0;
+            color: #c00;
+        }
+    </style>
+</head>
+<body>
+    <h1>NeoSync File Upload Test</h1>
+    
+    <div>
+        <h2>1. Login</h2>
+        <form id="loginForm">
+            <div>
+                <label for="username">Username:</label>
+                <input type="text" id="username" value="testuser">
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" value="password123">
+            </div>
+            <button type="submit" class="button">Login</button>
+        </form>
+        <div id="loginResult" class="result hidden"></div>
+    </div>
+    
+    <div>
+        <h2>2. Select File to Upload</h2>
+        <input type="file" id="fileInput" disabled>
+        <div id="fileInfo" class="file-info hidden"></div>
+        <div>
+            <button id="uploadButton" class="button" disabled>Upload File</button>
+        </div>
+        <div id="uploadResult" class="result hidden"></div>
+    </div>
+    
+    <script>
+        // Login form handling
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginResult = document.getElementById('loginResult');
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Login failed: ${response.statusText}`);
+                }
+                
+                const user = await response.json();
+                loginResult.textContent = `Logged in as ${user.displayName} (ID: ${user.id})`;
+                loginResult.classList.remove('hidden', 'error');
+                
+                // Enable file upload after login
+                document.getElementById('fileInput').disabled = false;
+                window.currentUser = user; // Store user for later
+                
+            } catch (error) {
+                loginResult.textContent = error.message;
+                loginResult.classList.remove('hidden');
+                loginResult.classList.add('error');
+            }
+        });
+        
+        // File input handling
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const fileInfo = document.getElementById('fileInfo');
+            
+            if (file) {
+                fileInfo.innerHTML = `
+                    <p><strong>File:</strong> ${file.name}</p>
+                    <p><strong>Type:</strong> ${file.type}</p>
+                    <p><strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+                `;
+                fileInfo.classList.remove('hidden');
+                document.getElementById('uploadButton').disabled = false;
+            } else {
+                fileInfo.classList.add('hidden');
+                document.getElementById('uploadButton').disabled = true;
+            }
+        });
+        
+        // Upload button handling
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const file = document.getElementById('fileInput').files[0];
+            const uploadResult = document.getElementById('uploadResult');
+            
+            if (!file || !window.currentUser) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('receiverId', '2'); // Hard-coded for this test
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                uploadResult.textContent = JSON.stringify(result, null, 2);
+                uploadResult.classList.remove('hidden', 'error');
+                
+            } catch (error) {
+                uploadResult.textContent = error.message;
+                uploadResult.classList.remove('hidden');
+                uploadResult.classList.add('error');
+            }
+        });
+    </script>
+</body>
+</html>
