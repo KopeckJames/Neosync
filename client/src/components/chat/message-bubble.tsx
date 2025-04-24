@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { MessageWithUser } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
+import { Lock } from "lucide-react";
 
 interface MessageBubbleProps {
   message: MessageWithUser;
@@ -23,6 +24,60 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [showDetails, setShowDetails] = useState(false);
   const timestamp = new Date(message.timestamp);
+  
+  // For encrypted messages
+  const [decryptedContent, setDecryptedContent] = useState<string>(
+    message.isEncrypted ? "Decrypting..." : message.content
+  );
+  const [decryptError, setDecryptError] = useState<boolean>(false);
+  
+  // Decrypt the message if needed
+  useEffect(() => {
+    if (message.isEncrypted) {
+      const decryptMessage = async () => {
+        try {
+          // Import the encryption utilities
+          const { decryptMessage, storeContactKey } = await import('@/lib/encryption');
+          
+          // Need to get the sender's public key
+          const senderId = isCurrentUser ? contact.id : message.sender.id;
+          
+          // Fetch sender's public key if needed
+          const response = await fetch(`/api/keys/${senderId}`);
+          if (!response.ok) {
+            throw new Error('Failed to get encryption key');
+          }
+          
+          const { publicKey } = await response.json();
+          
+          // Store the sender's public key for decryption
+          await storeContactKey(senderId, publicKey);
+          
+          // Decrypt the message
+          if (message.nonce) {
+            const decrypted = await decryptMessage(senderId, {
+              content: message.content,
+              nonce: message.nonce
+            });
+            setDecryptedContent(decrypted);
+          } else {
+            // If no nonce, we can't decrypt
+            setDecryptError(true);
+            setDecryptedContent("Message cannot be decrypted");
+          }
+        } catch (error) {
+          console.error('Failed to decrypt message:', error);
+          setDecryptError(true);
+          setDecryptedContent("Message cannot be decrypted");
+        }
+      };
+      
+      decryptMessage();
+    } else {
+      // Not encrypted, just show the content
+      setDecryptedContent(message.content);
+    }
+  }, [message, isCurrentUser, contact.id]);
   
   return (
     <div
@@ -47,14 +102,15 @@ export function MessageBubble({
                   isCurrentUser
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-secondary rounded-bl-none"
-                }`}
+                } ${decryptError ? "bg-destructive/20 border border-destructive/50" : ""}`}
                 onClick={() => setShowDetails(!showDetails)}
               >
-                <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                <p className="whitespace-pre-wrap break-words">{decryptedContent}</p>
               </div>
             </TooltipTrigger>
             <TooltipContent side={isCurrentUser ? "left" : "right"}>
               {format(timestamp, "MMM d, yyyy 'at' h:mm a")}
+              {message.isEncrypted && " • Encrypted"}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -65,6 +121,9 @@ export function MessageBubble({
             <span className="text-xs text-muted-foreground">
               {format(timestamp, "h:mm a")}
             </span>
+            {message.isEncrypted && (
+              <Lock className="h-3 w-3 text-primary" />
+            )}
             <span className={`text-xs ${message.isRead ? "text-primary" : "text-muted-foreground"}`}>
               {message.isRead ? (
                 <>
@@ -98,9 +157,14 @@ export function MessageBubble({
         
         {/* Time (for received messages) */}
         {!isCurrentUser && (
-          <span className="text-xs text-muted-foreground ml-2 mt-1">
-            {format(timestamp, "h:mm a")}
-          </span>
+          <div className="flex items-center gap-1 mt-1 ml-2">
+            <span className="text-xs text-muted-foreground">
+              {format(timestamp, "h:mm a")}
+            </span>
+            {message.isEncrypted && (
+              <Lock className="h-3 w-3 text-primary" />
+            )}
+          </div>
         )}
       </div>
     </div>

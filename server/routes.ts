@@ -76,6 +76,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   });
+  
+  // Encryption key routes
+  
+  // Store user's public key
+  app.post('/api/keys', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const { userId, publicKey } = req.body;
+      const currentUser = req.user as User;
+      
+      // Only the user can store their own key
+      if (userId !== currentUser.id) {
+        return res.status(403).send('Forbidden');
+      }
+      
+      await storage.storeUserKey(userId, publicKey);
+      
+      res.status(201).json({ success: true });
+    } catch (error) {
+      console.error('Error storing user key:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Get a user's public key
+  app.get('/api/keys/:userId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).send('User not found');
+      }
+      
+      // Get public key
+      const publicKey = await storage.getUserKey(userId);
+      if (!publicKey) {
+        return res.status(404).send('Public key not found');
+      }
+      
+      res.json({ userId, publicKey });
+    } catch (error) {
+      console.error('Error getting user key:', error);
+      res.status(500).send('Server error');
+    }
+  });
 
   // API Routes
   
@@ -244,6 +294,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         senderId: currentUser.id,
         receiverId: req.body.receiverId,
         content: req.body.content,
+        isEncrypted: req.body.isEncrypted !== false, // Default to true
+        encryptionType: req.body.encryptionType || 'sodium',
+        nonce: req.body.nonce, // Encrypted message nonce
         timestamp: new Date(),
         isRead: false
       });

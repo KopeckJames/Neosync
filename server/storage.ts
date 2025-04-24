@@ -45,6 +45,7 @@ export class MemStorage implements IStorage {
   private contacts: Map<number, Contact>;
   private conversations: Map<number, Conversation>;
   private messages: Map<number, Message>;
+  private userKeys: Map<number, string>; // Store user public keys
   sessionStore: session.SessionStore;
   
   private userIdCounter: number;
@@ -57,6 +58,7 @@ export class MemStorage implements IStorage {
     this.contacts = new Map();
     this.conversations = new Map();
     this.messages = new Map();
+    this.userKeys = new Map();
     
     this.userIdCounter = 1;
     this.contactIdCounter = 1;
@@ -66,6 +68,15 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24h
     });
+  }
+  
+  // Key methods
+  async storeUserKey(userId: number, publicKey: string): Promise<void> {
+    this.userKeys.set(userId, publicKey);
+  }
+  
+  async getUserKey(userId: number): Promise<string | undefined> {
+    return this.userKeys.get(userId);
   }
   
   // User methods

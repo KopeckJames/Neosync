@@ -40,12 +40,39 @@ export function Conversation({
     refetchInterval: isWebSocketConnected ? false : 3000, // Only poll if websocket is not connected
   });
 
+  // Fetch recipient's public key
+  const { 
+    data: recipientKey,
+    isLoading: keyLoading 
+  } = useQuery<{ userId: number; publicKey: string }>({
+    queryKey: [`/api/keys/${contact.id}`],
+    enabled: !!contact.id, // Only fetch when we have a contact
+  });
+  
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: { content: string }) => {
+      // Import the encryption utilities
+      const { encryptMessage, storeContactKey } = await import('@/lib/encryption');
+      
+      // Make sure we have the recipient's public key
+      if (!recipientKey) {
+        throw new Error("Recipient's encryption key not found");
+      }
+      
+      // Store the contact's public key for encryption
+      await storeContactKey(contact.id, recipientKey.publicKey);
+      
+      // Encrypt the message
+      const encryptedData = await encryptMessage(contact.id, messageData.content);
+      
+      // Prepare the message data to send
       const data: Partial<InsertMessage> = {
-        content: messageData.content,
+        content: encryptedData.content, // Encrypted content
         receiverId: contact.id,
+        isEncrypted: true,
+        encryptionType: 'sodium',
+        nonce: encryptedData.nonce, // Include nonce for decryption
       };
       
       const res = await apiRequest("POST", "/api/messages", data);

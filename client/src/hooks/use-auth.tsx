@@ -75,8 +75,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/register", userData);
       return await res.json();
     },
-    onSuccess: (userData: Omit<SelectUser, "password">) => {
+    onSuccess: async (userData: Omit<SelectUser, "password">) => {
       queryClient.setQueryData(["/api/user"], userData);
+      
+      // Generate encryption keys for the new user
+      try {
+        const { generateUserKeys } = await import('@/lib/encryption');
+        await generateUserKeys(userData.id);
+        
+        console.log('Encryption keys generated successfully');
+      } catch (error) {
+        console.error('Failed to generate encryption keys:', error);
+        // We don't want to abort the registration if key generation fails
+        // The user can still log in, but end-to-end encryption might not work
+      }
       
       toast({
         title: "Registration successful",
