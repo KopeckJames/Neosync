@@ -18,6 +18,10 @@ export interface IStorage {
   updateUserStatus(id: number, isOnline: boolean): Promise<void>;
   updateLastSeen(id: number): Promise<void>;
   
+  // Key methods
+  storeUserKey(userId: number, publicKey: string): Promise<void>;
+  getUserKey(userId: number): Promise<string | undefined>;
+  
   // Contact methods
   addContact(contact: InsertContact): Promise<Contact>;
   getContacts(userId: number): Promise<User[]>;

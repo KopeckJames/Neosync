@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -22,6 +22,22 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// User public keys for encryption
+export const userKeys = pgTable("user_keys", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  publicKey: text("public_key").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertUserKeySchema = createInsertSchema(userKeys).pick({
+  userId: true,
+  publicKey: true,
+});
+
+export type InsertUserKey = z.infer<typeof insertUserKeySchema>;
+export type UserKey = typeof userKeys.$inferSelect;
 
 // Contacts
 export const contacts = pgTable("contacts", {
@@ -62,6 +78,9 @@ export const messages = pgTable("messages", {
   senderId: integer("sender_id").notNull(),
   receiverId: integer("receiver_id").notNull(),
   content: text("content").notNull(),
+  isEncrypted: boolean("is_encrypted").default(true),
+  encryptionType: text("encryption_type").default("sodium"),
+  nonce: text("nonce"), // For encrypted messages (base64 encoded)
   timestamp: timestamp("timestamp").notNull(),
   isRead: boolean("is_read").default(false),
 });
@@ -71,6 +90,9 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   senderId: true,
   receiverId: true,
   content: true,
+  isEncrypted: true,
+  encryptionType: true,
+  nonce: true,
   timestamp: true,
   isRead: true,
 });
