@@ -53,6 +53,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
+        
+        // Handle typing indicator events
+        else if (message.type === 'typing' && userId && message.conversationId && message.receiverId) {
+          const receiverWs = wsClients.get(message.receiverId);
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({
+              type: 'typing',
+              userId: userId,
+              conversationId: message.conversationId
+            }));
+          }
+        }
+        
+        // Handle typing stopped events
+        else if (message.type === 'typing_stop' && userId && message.conversationId && message.receiverId) {
+          const receiverWs = wsClients.get(message.receiverId);
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({
+              type: 'typing_stop',
+              userId: userId,
+              conversationId: message.conversationId
+            }));
+          }
+        }
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
       }

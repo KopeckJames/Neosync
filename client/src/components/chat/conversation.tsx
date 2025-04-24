@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TypingIndicator } from "@/components/ui/typing-indicator";
 import { formatDistanceToNow } from "date-fns";
+import { useWebSocket } from "@/lib/use-websocket";
 
 interface ConversationProps {
   conversation: ConversationWithLastMessage;
@@ -28,8 +29,45 @@ export function Conversation({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isContactTyping, setIsContactTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { contact } = conversation;
+  
+  // Use websocket for typing indicators
+  const { sendMessage } = useWebSocket({
+    onMessage: (message) => {
+      // Handle typing indicator messages
+      if (message.type === 'typing' && 
+          message.userId === contact.id && 
+          message.conversationId === conversation.id) {
+        setIsContactTyping(true);
+        
+        // Clear any existing timeout
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        
+        // Set a timeout to clear the typing indicator after 3 seconds of no updates
+        typingTimeoutRef.current = setTimeout(() => {
+          setIsContactTyping(false);
+        }, 3000);
+      }
+      
+      // Handle typing stopped messages
+      else if (message.type === 'typing_stop' && 
+               message.userId === contact.id && 
+               message.conversationId === conversation.id) {
+        setIsContactTyping(false);
+        
+        // Clear timeout if it exists
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = null;
+        }
+      }
+    }
+  });
   
   // Fetch messages for this conversation
   const { 
@@ -212,7 +250,9 @@ export function Conversation({
         )}
         
         {/* Typing indicator (shown when needed) */}
-        {/* <TypingIndicator contact={contact} /> */}
+        {isContactTyping && (
+          <TypingIndicator contact={contact} />
+        )}
         
         {/* Invisible element to scroll to */}
         <div ref={messagesEndRef} />
@@ -222,6 +262,8 @@ export function Conversation({
       <MessageInput
         onSendMessage={(content) => sendMessageMutation.mutate({ content })}
         isSending={sendMessageMutation.isPending}
+        conversationId={conversation.id}
+        receiverId={contact.id}
       />
     </>
   );
