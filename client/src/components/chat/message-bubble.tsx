@@ -4,6 +4,7 @@ import { MessageWithUser } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { Lock } from "lucide-react";
+import { AttachmentPreview } from "./attachment-preview";
 
 interface MessageBubbleProps {
   message: MessageWithUser;
@@ -27,7 +28,7 @@ export function MessageBubble({
   
   // For encrypted messages
   const [decryptedContent, setDecryptedContent] = useState<string>(
-    message.isEncrypted ? "Decrypting..." : message.content
+    message.isEncrypted ? "Decrypting..." : (message.content || "")
   );
   const [decryptError, setDecryptError] = useState<boolean>(false);
   
@@ -56,8 +57,8 @@ export function MessageBubble({
           // Decrypt the message
           if (message.nonce) {
             const decrypted = await decryptMessage(senderId, {
-              content: message.content,
-              nonce: message.nonce
+              content: message.content || "",
+              nonce: message.nonce || ""
             });
             setDecryptedContent(decrypted);
           } else {
@@ -75,7 +76,7 @@ export function MessageBubble({
       decryptMessage();
     } else {
       // Not encrypted, just show the content
-      setDecryptedContent(message.content);
+      setDecryptedContent(message.content || "");
     }
   }, [message, isCurrentUser, contact.id]);
   
@@ -105,7 +106,23 @@ export function MessageBubble({
                 } ${decryptError ? "bg-destructive/20 border border-destructive/50" : ""}`}
                 onClick={() => setShowDetails(!showDetails)}
               >
-                <p className="whitespace-pre-wrap break-words">{decryptedContent}</p>
+                {/* Show the message content if it exists */}
+                {decryptedContent && (
+                  <p className="whitespace-pre-wrap break-words mb-2">{decryptedContent}</p>
+                )}
+                
+                {/* Show attachments if any */}
+                {message.attachments && message.attachments.length > 0 && (
+                  <div className="mt-2">
+                    {message.attachments.map((attachment) => (
+                      <AttachmentPreview 
+                        key={attachment.id} 
+                        attachment={attachment}
+                        messageType={message.messageType || 'text'}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </TooltipTrigger>
             <TooltipContent side={isCurrentUser ? "left" : "right"}>
