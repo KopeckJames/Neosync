@@ -75,7 +75,7 @@ export default function AuthPage() {
               <svg viewBox="0 0 512 512" className="w-10 h-10 text-primary" xmlns="http://www.w3.org/2000/svg">
                 <path fill="currentColor" d="M256 0c141.385 0 256 114.615 256 256S397.385 512 256 512 0 397.385 0 256 114.615 0 256 0zm122.422 139.405l-6.477 12.991c-15.856 31.703-53.146 44.575-85.019 28.741l-64.559-32.226a64.445 64.445 0 00-57.638 0l-64.559 32.226c-31.874 15.855-69.163 2.962-85.019-28.741l-6.477-12.991C56.497 185.139 96.142 236.973 151.187 267.5c22.434 12.438 47.317 18.968 72.481 18.968h64.664c25.164 0 50.047-6.53 72.481-18.968 55.045-30.527 94.69-82.361 117.609-128.095z"/>
               </svg>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Signal</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-primary to-blue-500 text-transparent bg-clip-text">NeoSync</h1>
             </div>
           </div>
 
@@ -248,11 +248,11 @@ export default function AuthPage() {
               <path fill="currentColor" d="M256 0c141.385 0 256 114.615 256 256S397.385 512 256 512 0 397.385 0 256 114.615 0 256 0zm122.422 139.405l-6.477 12.991c-15.856 31.703-53.146 44.575-85.019 28.741l-64.559-32.226a64.445 64.445 0 00-57.638 0l-64.559 32.226c-31.874 15.855-69.163 2.962-85.019-28.741l-6.477-12.991C56.497 185.139 96.142 236.973 151.187 267.5c22.434 12.438 47.317 18.968 72.481 18.968h64.664c25.164 0 50.047-6.53 72.481-18.968 55.045-30.527 94.69-82.361 117.609-128.095z"/>
             </svg>
           </div>
-          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
-            Securely connect with friends and family
+          <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white bg-gradient-to-r from-primary to-blue-500 text-transparent bg-clip-text">
+            Securely connect in the digital frontier
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-            Signal is a messenger app that prioritizes your privacy with end-to-end encryption for all communications.
+            NeoSync is a next-generation messenger that prioritizes your privacy with quantum-resistant encryption for all communications.
           </p>
           <div className="grid grid-cols-2 gap-6 text-left">
             <div className="flex items-start gap-2">

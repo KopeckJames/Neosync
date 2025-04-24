@@ -111,7 +111,7 @@ export function ChatLayout() {
             <svg viewBox="0 0 512 512" className="w-8 h-8 text-primary" xmlns="http://www.w3.org/2000/svg">
               <path fill="currentColor" d="M256 0c141.385 0 256 114.615 256 256S397.385 512 256 512 0 397.385 0 256 114.615 0 256 0zm122.422 139.405l-6.477 12.991c-15.856 31.703-53.146 44.575-85.019 28.741l-64.559-32.226a64.445 64.445 0 00-57.638 0l-64.559 32.226c-31.874 15.855-69.163 2.962-85.019-28.741l-6.477-12.991C56.497 185.139 96.142 236.973 151.187 267.5c22.434 12.438 47.317 18.968 72.481 18.968h64.664c25.164 0 50.047-6.53 72.481-18.968 55.045-30.527 94.69-82.361 117.609-128.095z"/>
             </svg>
-            <h1 className="text-xl font-semibold">Signal</h1>
+            <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-blue-500 text-transparent bg-clip-text">NeoSync</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button 
@@ -166,9 +166,9 @@ export function ChatLayout() {
             <svg viewBox="0 0 512 512" className="w-16 h-16 text-primary mb-4" xmlns="http://www.w3.org/2000/svg">
               <path fill="currentColor" d="M256 0c141.385 0 256 114.615 256 256S397.385 512 256 512 0 397.385 0 256 114.615 0 256 0zm122.422 139.405l-6.477 12.991c-15.856 31.703-53.146 44.575-85.019 28.741l-64.559-32.226a64.445 64.445 0 00-57.638 0l-64.559 32.226c-31.874 15.855-69.163 2.962-85.019-28.741l-6.477-12.991C56.497 185.139 96.142 236.973 151.187 267.5c22.434 12.438 47.317 18.968 72.481 18.968h64.664c25.164 0 50.047-6.53 72.481-18.968 55.045-30.527 94.69-82.361 117.609-128.095z"/>
             </svg>
-            <h2 className="text-2xl font-bold mb-2">Welcome to Signal</h2>
+            <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-blue-500 text-transparent bg-clip-text">Welcome to NeoSync</h2>
             <p className="text-gray-500 dark:text-gray-400 max-w-md">
-              Select a conversation to start messaging or add a new contact to get started.
+              Select a conversation to start messaging or add a new contact to begin your secure communications.
             </p>
           </div>
         )}
