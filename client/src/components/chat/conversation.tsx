@@ -1,9 +1,11 @@
 import { useRef, useEffect, useState } from "react";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageBubble } from "@/components/chat/message-bubble";
+import { CallButtons } from "@/components/chat/call-buttons";
+import { showIncomingCallToast } from "@/components/chat/incoming-call-toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Phone, Video, Info } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ConversationWithLastMessage, MessageWithUser, InsertMessage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -187,12 +189,12 @@ export function Conversation({
         </div>
         
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Phone className="h-5 w-5 text-primary" />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Video className="h-5 w-5 text-primary" />
-          </Button>
+          <CallButtons
+            userId={currentUser.id}
+            contactId={contact.id}
+            contactName={contact.displayName}
+            contactAvatar={contact.avatarColor}
+          />
           <Button variant="ghost" size="icon" className="rounded-full">
             <Info className="h-5 w-5 text-primary" />
           </Button>

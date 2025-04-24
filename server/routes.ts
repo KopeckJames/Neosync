@@ -110,6 +110,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
           }
         }
+        
+        // Handle WebRTC call request
+        else if (message.type === 'call-request' && userId && message.contactId) {
+          const receiverId = message.contactId;
+          const receiverWs = wsClients.get(Number(receiverId));
+          
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({
+              type: 'call-request',
+              from: userId,
+              to: receiverId,
+              mediaType: message.mediaType || 'audio',
+              sessionId: message.sessionId
+            }));
+          } else {
+            // Receiver is offline, send call-failed response
+            ws.send(JSON.stringify({
+              type: 'call-failed',
+              to: userId,
+              from: receiverId,
+              reason: 'User is offline'
+            }));
+          }
+        }
+        
+        // Handle call accepted
+        else if (message.type === 'call-accepted' && userId && message.contactId) {
+          const receiverId = message.contactId;
+          const receiverWs = wsClients.get(Number(receiverId));
+          
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({
+              type: 'call-accepted',
+              from: userId,
+              to: receiverId,
+              sessionId: message.sessionId
+            }));
+          }
+        }
+        
+        // Handle call rejected
+        else if (message.type === 'call-rejected' && userId && message.contactId) {
+          const receiverId = message.contactId;
+          const receiverWs = wsClients.get(Number(receiverId));
+          
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({
+              type: 'call-rejected',
+              from: userId,
+              to: receiverId,
+              sessionId: message.sessionId,
+              reason: message.reason || 'Call declined'
+            }));
+          }
+        }
+        
+        // Handle call ended
+        else if (message.type === 'call-ended' && userId && message.contactId) {
+          const receiverId = message.contactId;
+          const receiverWs = wsClients.get(Number(receiverId));
+          
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify({
+              type: 'call-ended',
+              from: userId,
+              to: receiverId,
+              sessionId: message.sessionId
+            }));
+          }
+        }
+        
+        // Handle WebRTC signaling
+        else if (message.type === 'webrtc-signal' && userId && message.payload) {
+          const payload = message.payload;
+          const receiverId = payload.to;
+          const receiverWs = wsClients.get(Number(receiverId));
+          
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            // Forward the WebRTC signal to the recipient
+            receiverWs.send(JSON.stringify({
+              type: 'webrtc-signal',
+              payload: {
+                ...payload,
+                from: userId // Ensure the from field is correct
+              }
+            }));
+          }
+        }
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
       }
