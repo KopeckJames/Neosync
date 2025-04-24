@@ -1,10 +1,27 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { WebSocketServer, WebSocket } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertContactSchema, insertMessageSchema, User } from "@shared/schema";
+import { 
+  insertContactSchema, 
+  insertMessageSchema, 
+  insertAttachmentSchema,
+  User, 
+  Attachment, 
+  AttachmentWithThumbnail 
+} from "@shared/schema";
 import { ZodError } from "zod";
+import { 
+  upload, 
+  generateThumbnail, 
+  getRelativePath, 
+  ensureDirectories,
+  isImageFile, 
+  isVideoFile, 
+  isAudioFile 
+} from "./file-utils";
 
 // WebSocket clients mapping (userId -> WebSocket)
 const wsClients = new Map<number, WebSocket>();
@@ -12,6 +29,29 @@ const wsClients = new Map<number, WebSocket>();
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up auth routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
+
+  // Ensure uploads directories exist
+  await ensureDirectories();
+
+  // Serve uploads directory for attachments
+  app.use('/uploads', (req, res, next) => {
+    // Only allow authenticated users to access uploads
+    if (!req.isAuthenticated()) {
+      return res.status(401).send('Unauthorized');
+    }
+    next();
+  }, (req, res, next) => {
+    // Set cache control headers
+    res.set('Cache-Control', 'private, max-age=3600'); // 1 hour cache
+    next();
+  }, (req, res, next) => {
+    res.sendFile(path.join(process.cwd(), req.path), (err) => {
+      if (err) {
+        console.error('Error serving file:', err);
+        res.status(404).send('File not found');
+      }
+    });
+  });
 
   const httpServer = createServer(app);
   
@@ -358,6 +398,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ errors: error.errors });
       }
+      res.status(500).send('Server error');
+    }
+  });
+
+  // File upload and attachments endpoints
+  
+  // Upload file and attach to a message
+  app.post('/api/upload', upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      
+      if (!req.file) {
+        return res.status(400).send('No file uploaded');
+      }
+      
+      const { receiverId, conversationId: existingConvId } = req.body;
+      
+      if (!receiverId) {
+        return res.status(400).send('ReceiverID is required');
+      }
+      
+      // Get or create conversation
+      const conversation = existingConvId 
+        ? await storage.getConversationById(Number(existingConvId))
+        : await storage.getOrCreateConversation(currentUser.id, Number(receiverId));
+      
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      // Determine message type based on file type
+      let messageType = 'file';
+      const file = req.file;
+      
+      if (isImageFile(file.path)) {
+        messageType = 'image';
+      } else if (isVideoFile(file.path)) {
+        messageType = 'video';
+      } else if (isAudioFile(file.path)) {
+        messageType = 'audio';
+      }
+      
+      // Generate thumbnail for images if possible
+      const thumbnailPath = await generateThumbnail(file.path);
+      
+      // Create the message first
+      const messageData = {
+        conversationId: conversation.id,
+        senderId: currentUser.id,
+        receiverId: Number(receiverId),
+        content: req.body.content || null, // Optional text to accompany the file
+        messageType,
+        isEncrypted: false, // Files are not encrypted in this implementation
+        timestamp: new Date(),
+        isRead: false,
+        hasAttachment: true
+      };
+      
+      const message = await storage.createMessage(messageData);
+      
+      // Create the attachment record
+      const attachmentData = {
+        messageId: message.id,
+        filename: file.originalname,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        filePath: getRelativePath(file.path),
+        thumbnailPath: thumbnailPath ? getRelativePath(thumbnailPath) : null,
+        isEncrypted: false,
+        nonce: null
+      };
+      
+      const attachment = await storage.createAttachment(attachmentData);
+      
+      // Get sender info
+      const sender = await storage.getUser(currentUser.id);
+      if (!sender) {
+        return res.status(404).send('Sender not found');
+      }
+      
+      const { password, ...senderWithoutPassword } = sender;
+      
+      // Create response with URLs
+      const attachmentWithUrl: AttachmentWithThumbnail = {
+        ...attachment,
+        downloadUrl: attachment.filePath,
+        thumbnailUrl: attachment.thumbnailPath || undefined
+      };
+      
+      const messageWithAttachment = {
+        ...message,
+        sender: senderWithoutPassword,
+        attachments: [attachmentWithUrl]
+      };
+      
+      // Notify the receiver via WebSocket
+      const receiverWs = wsClients.get(Number(receiverId));
+      if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+        receiverWs.send(JSON.stringify({
+          type: 'new_message',
+          message: messageWithAttachment
+        }));
+      }
+      
+      res.status(201).json(messageWithAttachment);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Get attachments for a message
+  app.get('/api/messages/:messageId/attachments', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const messageId = parseInt(req.params.messageId);
+      const attachments = await storage.getAttachmentsByMessageId(messageId);
+      
+      // Add URLs to attachments
+      const attachmentsWithUrls: AttachmentWithThumbnail[] = attachments.map(attachment => ({
+        ...attachment,
+        downloadUrl: attachment.filePath,
+        thumbnailUrl: attachment.thumbnailPath || undefined
+      }));
+      
+      res.json(attachmentsWithUrls);
+    } catch (error) {
+      console.error('Error getting attachments:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Get a specific attachment
+  app.get('/api/attachments/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const attachmentId = parseInt(req.params.id);
+      const attachment = await storage.getAttachment(attachmentId);
+      
+      if (!attachment) {
+        return res.status(404).send('Attachment not found');
+      }
+      
+      const attachmentWithUrl: AttachmentWithThumbnail = {
+        ...attachment,
+        downloadUrl: attachment.filePath,
+        thumbnailUrl: attachment.thumbnailPath || undefined
+      };
+      
+      res.json(attachmentWithUrl);
+    } catch (error) {
+      console.error('Error getting attachment:', error);
       res.status(500).send('Server error');
     }
   });

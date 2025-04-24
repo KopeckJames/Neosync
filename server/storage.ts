@@ -248,12 +248,14 @@ export class MemStorage implements IStorage {
       conversationId: insertMessage.conversationId,
       senderId: insertMessage.senderId,
       receiverId: insertMessage.receiverId,
-      content: insertMessage.content,
-      timestamp: insertMessage.timestamp,
+      content: insertMessage.content ?? null,
+      messageType: insertMessage.messageType ?? 'text',
       isEncrypted: insertMessage.isEncrypted === undefined ? true : insertMessage.isEncrypted,
       encryptionType: insertMessage.encryptionType || null,
       nonce: insertMessage.nonce || null,
-      isRead: insertMessage.isRead === undefined ? false : insertMessage.isRead
+      timestamp: insertMessage.timestamp,
+      isRead: insertMessage.isRead === undefined ? false : insertMessage.isRead,
+      hasAttachment: insertMessage.hasAttachment === undefined ? false : insertMessage.hasAttachment
     };
     
     this.messages.set(id, message);
@@ -275,16 +277,24 @@ export class MemStorage implements IStorage {
         return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
       });
     
-    // Enhance messages with sender info
+    // Enhance messages with sender info and attachments
     const messagesWithUser: MessageWithUser[] = [];
     
     for (const message of conversationMessages) {
       const sender = await this.getUser(message.senderId);
       if (sender) {
         const { password, ...senderWithoutPassword } = sender;
+        
+        // Get any attachments for this message
+        let attachments = undefined;
+        if (message.hasAttachment) {
+          attachments = await this.getAttachmentsByMessageId(message.id);
+        }
+        
         messagesWithUser.push({
           ...message,
-          sender: senderWithoutPassword
+          sender: senderWithoutPassword,
+          attachments
         });
       }
     }
