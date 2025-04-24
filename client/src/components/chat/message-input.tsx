@@ -1,21 +1,25 @@
 import { useState, useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Smile, Paperclip, Camera, Send } from "lucide-react";
+import { Smile, Camera, Send, Paperclip } from "lucide-react";
 import { useWebSocket } from "@/lib/use-websocket";
+import { FileUploader } from "./file-uploader";
+import { MessageWithUser } from "@shared/schema";
 
 interface MessageInputProps {
   onSendMessage: (content: string) => void;
   isSending: boolean;
   conversationId?: number;
   receiverId?: number;
+  onFileUploaded?: (message: MessageWithUser) => void;
 }
 
 export function MessageInput({ 
   onSendMessage, 
   isSending, 
   conversationId, 
-  receiverId 
+  receiverId,
+  onFileUploaded
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -92,9 +96,16 @@ export function MessageInput({
         <Button variant="ghost" size="icon" className="rounded-full flex-shrink-0">
           <Smile className="h-5 w-5 text-muted-foreground" />
         </Button>
-        <Button variant="ghost" size="icon" className="rounded-full flex-shrink-0">
-          <Paperclip className="h-5 w-5 text-muted-foreground" />
-        </Button>
+        <FileUploader 
+          conversationId={conversationId}
+          receiverId={receiverId}
+          onFileUploaded={(response) => {
+            if (onFileUploaded) {
+              onFileUploaded(response);
+            }
+          }}
+          disabled={isSending}
+        />
         
         <div className="flex-1 relative">
           <Textarea
