@@ -20,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   wss.on('connection', (ws, req) => {
     // Get session ID from cookies
-    let userId: number | null = null;
+    let userId: number | undefined = undefined;
     
     // Handle messages from client
     ws.on('message', async (data) => {
@@ -29,7 +29,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle authentication
         if (message.type === 'authenticate' && message.userId) {
-          userId = message.userId;
+          userId = Number(message.userId);
+          if (isNaN(userId)) {
+            console.error('Invalid userId:', message.userId);
+            return;
+          }
+          
           wsClients.set(userId, ws);
           
           // Update user status to online
@@ -55,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Handle disconnection
     ws.on('close', async () => {
-      if (userId) {
+      if (userId !== undefined) {
         wsClients.delete(userId);
         
         // Update user status to offline

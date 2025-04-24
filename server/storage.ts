@@ -37,7 +37,7 @@ export interface IStorage {
   markMessagesAsRead(conversationId: number, userId: number): Promise<void>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using 'any' to avoid TypeScript issues with session.SessionStore
 }
 
 export class MemStorage implements IStorage {
@@ -46,7 +46,7 @@ export class MemStorage implements IStorage {
   private conversations: Map<number, Conversation>;
   private messages: Map<number, Message>;
   private userKeys: Map<number, string>; // Store user public keys
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using 'any' to avoid TypeScript issues
   
   private userIdCounter: number;
   private contactIdCounter: number;
@@ -97,7 +97,8 @@ export class MemStorage implements IStorage {
       ...insertUser, 
       id, 
       isOnline: true,
-      lastSeen: now
+      lastSeen: now,
+      avatarColor: insertUser.avatarColor || null // Ensure avatarColor is not undefined
     };
     this.users.set(id, user);
     return user;

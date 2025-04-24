@@ -16,52 +16,62 @@ export function useWebSocket({ onMessage }: UseWebSocketOptions = {}) {
   const { user } = useAuth();
 
   const connect = useCallback(() => {
-    if (!user || socketRef.current?.readyState === WebSocket.OPEN) return;
+    // Only attempt to connect if we have a logged-in user
+    if (!user?.id || socketRef.current?.readyState === WebSocket.OPEN) return;
+
+    // Close any existing connection first
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
+    try {
+      const socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
 
-    socket.onopen = () => {
-      setIsConnected(true);
-      // Authenticate with the WebSocket server
-      socket.send(JSON.stringify({
-        type: 'authenticate',
-        userId: user.id
-      }));
-    };
+      socket.onopen = () => {
+        console.log('WebSocket connected successfully');
+        setIsConnected(true);
+        // Authenticate with the WebSocket server
+        socket.send(JSON.stringify({
+          type: 'authenticate',
+          userId: user.id
+        }));
+      };
+      
+      socket.onclose = () => {
+        console.log('WebSocket connection closed');
+        setIsConnected(false);
+        // Try to reconnect after a delay
+        setTimeout(() => {
+          if (user) connect();
+        }, 3000);
+      };
 
-    socket.onclose = () => {
-      setIsConnected(false);
-      // Try to reconnect after a delay
-      setTimeout(() => {
-        if (user) connect();
-      }, 3000);
-    };
-
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      socket.close();
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (onMessage) {
-          onMessage(message);
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-
-    return () => {
-      if (socket.readyState === WebSocket.OPEN) {
+      socket.onerror = (err: Event) => {
+        console.error('WebSocket error:', err);
         socket.close();
-      }
-    };
+      };
+
+      socket.onmessage = (evt: MessageEvent) => {
+        try {
+          const message = JSON.parse(evt.data);
+          if (onMessage) {
+            onMessage(message);
+          }
+        } catch (err) {
+          console.error('Error parsing WebSocket message:', err);
+        }
+      };
+      
+    } catch (err) {
+      console.error('Error creating WebSocket connection:', err);
+    }
+
+    // No need to return a cleanup function here
+    // It's handled by the useEffect
   }, [user, onMessage]);
 
   useEffect(() => {
