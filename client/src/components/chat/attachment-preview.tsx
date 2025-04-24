@@ -32,7 +32,8 @@ export function AttachmentPreview({ attachment, messageType }: AttachmentPreview
   // Helper to get the full URL for an attachment
   const getUrl = (path: string) => {
     if (path.startsWith('http')) return path;
-    return path;
+    // If the path doesn't start with '/', add it
+    return path.startsWith('/') ? path : `/${path}`;
   };
 
   // Format file size

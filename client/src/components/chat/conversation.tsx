@@ -273,6 +273,21 @@ export function Conversation({
         isSending={sendMessageMutation.isPending}
         conversationId={conversation.id}
         receiverId={contact.id}
+        onFileUploaded={(message) => {
+          // Update the messages directly in the cache
+          queryClient.setQueryData(
+            [`/api/conversations/${conversation.id}/messages`], 
+            (oldMessages: MessageWithUser[] = []) => [...oldMessages, message]
+          );
+          
+          // Update the conversations list to reflect the latest message
+          queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+          
+          // Scroll to the new message
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+          }
+        }}
       />
     </>
   );

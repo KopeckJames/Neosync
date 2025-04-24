@@ -114,13 +114,22 @@ export function MessageBubble({
                 {/* Show attachments if any */}
                 {message.attachments && message.attachments.length > 0 && (
                   <div className="mt-2">
-                    {message.attachments.map((attachment) => (
-                      <AttachmentPreview 
-                        key={attachment.id} 
-                        attachment={attachment}
-                        messageType={message.messageType || 'text'}
-                      />
-                    ))}
+                    {message.attachments.map((attachment) => {
+                      // Transform attachment to AttachmentWithThumbnail if needed
+                      const attachmentWithUrl: AttachmentWithThumbnail = {
+                        ...attachment,
+                        downloadUrl: attachment.filePath,
+                        thumbnailUrl: attachment.thumbnailPath || undefined
+                      };
+                      
+                      return (
+                        <AttachmentPreview 
+                          key={attachment.id} 
+                          attachment={attachmentWithUrl}
+                          messageType={message.messageType || 'text'}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
