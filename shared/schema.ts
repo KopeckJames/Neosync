@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -71,18 +71,48 @@ export const insertConversationSchema = createInsertSchema(conversations).pick({
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 
+// File attachments
+export const attachments = pgTable("attachments", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  fileType: varchar("file_type", { length: 100 }).notNull(),
+  fileSize: integer("file_size").notNull(),
+  filePath: text("file_path").notNull(),
+  thumbnailPath: text("thumbnail_path"),
+  isEncrypted: boolean("is_encrypted").default(true),
+  nonce: text("nonce"), // For encrypted files
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
+export const insertAttachmentSchema = createInsertSchema(attachments).pick({
+  messageId: true,
+  filename: true,
+  fileType: true,
+  fileSize: true,
+  filePath: true,
+  thumbnailPath: true,
+  isEncrypted: true,
+  nonce: true,
+});
+
+export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+export type Attachment = typeof attachments.$inferSelect;
+
 // Messages
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   conversationId: integer("conversation_id").notNull(),
   senderId: integer("sender_id").notNull(),
   receiverId: integer("receiver_id").notNull(),
-  content: text("content").notNull(),
+  content: text("content"),  // Can be null if it's a file-only message
+  messageType: varchar("message_type", { length: 20 }).notNull().default("text"), // text, image, file, audio, video
   isEncrypted: boolean("is_encrypted").default(true),
   encryptionType: text("encryption_type").default("sodium"),
   nonce: text("nonce"), // For encrypted messages (base64 encoded)
   timestamp: timestamp("timestamp").notNull(),
   isRead: boolean("is_read").default(false),
+  hasAttachment: boolean("has_attachment").default(false),
 });
 
 export const insertMessageSchema = createInsertSchema(messages).pick({
@@ -90,11 +120,13 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   senderId: true,
   receiverId: true,
   content: true,
+  messageType: true,
   isEncrypted: true,
   encryptionType: true,
   nonce: true,
   timestamp: true,
   isRead: true,
+  hasAttachment: true,
 });
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
@@ -110,4 +142,10 @@ export type ConversationWithLastMessage = {
 
 export type MessageWithUser = Message & {
   sender: Omit<User, 'password'>;
+  attachments?: Attachment[];
+};
+
+export type AttachmentWithThumbnail = Attachment & {
+  thumbnailUrl?: string;
+  downloadUrl: string;
 };

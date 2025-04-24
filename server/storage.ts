@@ -3,7 +3,9 @@ import {
   contacts, type Contact, type InsertContact,
   conversations, type Conversation, type InsertConversation, 
   messages, type Message, type InsertMessage,
-  type ConversationWithLastMessage, type MessageWithUser
+  attachments, type Attachment, type InsertAttachment,
+  type ConversationWithLastMessage, type MessageWithUser,
+  type AttachmentWithThumbnail
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -36,6 +38,11 @@ export interface IStorage {
   getMessages(conversationId: number): Promise<MessageWithUser[]>;
   markMessagesAsRead(conversationId: number, userId: number): Promise<void>;
   
+  // Attachment methods
+  createAttachment(attachment: InsertAttachment): Promise<Attachment>;
+  getAttachmentsByMessageId(messageId: number): Promise<Attachment[]>;
+  getAttachment(id: number): Promise<Attachment | undefined>;
+  
   // Session store
   sessionStore: any; // Using 'any' to avoid TypeScript issues with session.SessionStore
 }
@@ -46,12 +53,14 @@ export class MemStorage implements IStorage {
   private conversations: Map<number, Conversation>;
   private messages: Map<number, Message>;
   private userKeys: Map<number, string>; // Store user public keys
+  private attachments: Map<number, Attachment>; // Store file attachments
   sessionStore: any; // Using 'any' to avoid TypeScript issues
   
   private userIdCounter: number;
   private contactIdCounter: number;
   private conversationIdCounter: number;
   private messageIdCounter: number;
+  private attachmentIdCounter: number;
   
   constructor() {
     this.users = new Map();
@@ -59,11 +68,13 @@ export class MemStorage implements IStorage {
     this.conversations = new Map();
     this.messages = new Map();
     this.userKeys = new Map();
+    this.attachments = new Map();
     
     this.userIdCounter = 1;
     this.contactIdCounter = 1;
     this.conversationIdCounter = 1;
     this.messageIdCounter = 1;
+    this.attachmentIdCounter = 1;
     
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24h
@@ -295,6 +306,56 @@ export class MemStorage implements IStorage {
       message.isRead = true;
       this.messages.set(message.id, message);
     }
+  }
+  
+  // Attachment methods
+  async createAttachment(insertAttachment: InsertAttachment): Promise<Attachment> {
+    const id = this.attachmentIdCounter++;
+    
+    const attachment: Attachment = {
+      id,
+      messageId: insertAttachment.messageId,
+      filename: insertAttachment.filename,
+      fileType: insertAttachment.fileType,
+      fileSize: insertAttachment.fileSize,
+      filePath: insertAttachment.filePath,
+      thumbnailPath: insertAttachment.thumbnailPath || null,
+      isEncrypted: insertAttachment.isEncrypted === undefined ? true : insertAttachment.isEncrypted,
+      nonce: insertAttachment.nonce || null,
+      uploadedAt: new Date()
+    };
+    
+    this.attachments.set(id, attachment);
+    
+    // Update the message to indicate it has an attachment
+    const message = this.messages.get(insertAttachment.messageId);
+    if (message) {
+      message.hasAttachment = true;
+      // Update message type based on file type if not already set
+      if (message.messageType === 'text') {
+        if (insertAttachment.fileType.startsWith('image/')) {
+          message.messageType = 'image';
+        } else if (insertAttachment.fileType.startsWith('video/')) {
+          message.messageType = 'video';
+        } else if (insertAttachment.fileType.startsWith('audio/')) {
+          message.messageType = 'audio';
+        } else {
+          message.messageType = 'file';
+        }
+      }
+      this.messages.set(message.id, message);
+    }
+    
+    return attachment;
+  }
+  
+  async getAttachmentsByMessageId(messageId: number): Promise<Attachment[]> {
+    return Array.from(this.attachments.values())
+      .filter(attachment => attachment.messageId === messageId);
+  }
+  
+  async getAttachment(id: number): Promise<Attachment | undefined> {
+    return this.attachments.get(id);
   }
 }
 
