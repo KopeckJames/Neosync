@@ -1333,6 +1333,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Send a message to a group conversation
+  app.post('/api/group-conversations/:id/messages', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const conversationId = parseInt(req.params.id);
+      
+      // Get the conversation to check if it exists and is a group
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      if (!conversation.isGroup) {
+        return res.status(400).send('This is not a group conversation');
+      }
+      
+      // Verify the user is a member of the group
+      const members = await storage.getGroupMembers(conversationId);
+      const isMember = members.some(member => member.userId === currentUser.id);
+      if (!isMember) {
+        return res.status(403).send('You are not a member of this group');
+      }
+      
+      // Create message
+      const messageData = insertMessageSchema.parse({
+        conversationId: conversationId,
+        senderId: currentUser.id,
+        receiverId: null, // Group messages don't have a specific receiver
+        content: req.body.content,
+        messageType: req.body.messageType || 'text',
+        isEncrypted: req.body.isEncrypted !== false, // Default to true
+        encryptionType: req.body.encryptionType || 'sodium',
+        nonce: req.body.nonce, // Encrypted message nonce
+        timestamp: new Date(),
+        isRead: false
+      });
+      
+      const message = await storage.createMessage(messageData);
+      
+      // Get the sender info to attach to the message
+      const sender = await storage.getUser(message.senderId);
+      if (!sender) {
+        return res.status(404).send('Sender not found');
+      }
+      
+      const { password, ...senderWithoutPassword } = sender;
+      
+      const messageWithUser = {
+        ...message,
+        sender: senderWithoutPassword
+      };
+      
+      // Notify all group members via WebSocket
+      for (const member of members) {
+        if (member.userId !== currentUser.id) {
+          const memberWs = wsClients.get(member.userId);
+          if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+            memberWs.send(JSON.stringify({
+              type: 'new_message',
+              message: messageWithUser
+            }));
+          }
+        }
+      }
+      
+      res.status(201).json(messageWithUser);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      console.error('Error sending group message:', error);
+      res.status(500).send('Server error');
+    }
+  });
+
   // Get group members
   app.get('/api/group-conversations/:id/members', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
