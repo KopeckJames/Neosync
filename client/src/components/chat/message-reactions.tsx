@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { MessageReaction } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/lib/use-websocket";
+import { AnimatedEmoji, AnimatedEmojiCluster, RisingEmoji } from "./animated-emoji";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Common emoji reactions to offer
 const commonReactions = ["👍", "❤️", "😂", "😮", "😢", "🎉", "🙏", "🔥"];
@@ -28,6 +30,8 @@ export function MessageReactions({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [recentlyAddedEmoji, setRecentlyAddedEmoji] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Group reactions by emoji for display and counting
   const groupedReactions = reactions.reduce<
@@ -54,8 +58,16 @@ export function MessageReactions({
   // Use websocket for real-time updates
   const { sendMessage } = useWebSocket({
     onMessage: (message) => {
-      // Reactions will be handled by the parent Conversation component
-      // It will refresh the messages list when it gets a reaction update
+      // Handle real-time reaction updates
+      if (message.type === 'message_reaction' && message.messageId === messageId) {
+        // Set the recently added emoji for animation
+        setRecentlyAddedEmoji(message.reaction.reaction);
+        
+        // Clear it after animation
+        setTimeout(() => {
+          setRecentlyAddedEmoji(null);
+        }, 1500);
+      }
     }
   });
   
