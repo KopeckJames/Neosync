@@ -77,7 +77,15 @@ export function MessageReactions({
       const res = await apiRequest("POST", `/api/messages/${messageId}/reactions`, { reaction });
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, reaction) => {
+      // Set the recently added emoji for animation
+      setRecentlyAddedEmoji(reaction);
+      
+      // Clear it after animation
+      setTimeout(() => {
+        setRecentlyAddedEmoji(null);
+      }, 1500);
+      
       // Invalidate and refetch conversation messages
       queryClient.invalidateQueries({ queryKey: [`/api/conversations/${conversationId}/messages`] });
     },
@@ -138,7 +146,21 @@ export function MessageReactions({
   };
   
   return (
-    <div className="flex flex-wrap items-center gap-1 mt-1">
+    <div ref={containerRef} className="flex flex-wrap items-center gap-1 mt-1 relative">
+      {/* Animated rising emoji */}
+      <AnimatePresence>
+        {recentlyAddedEmoji && (
+          <motion.div 
+            key={`rising-${recentlyAddedEmoji}-${Date.now()}`}
+            className="absolute" 
+            initial={{ bottom: 0 }}
+            style={{ bottom: 0, left: Math.random() * (containerRef.current?.offsetWidth || 100) }}
+          >
+            <RisingEmoji emoji={recentlyAddedEmoji} size="lg" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* Existing reactions */}
       {Object.entries(groupedReactions).map(([emoji, { count, users, hasReacted }]) => (
         <TooltipProvider key={emoji} delayDuration={300}>
@@ -147,11 +169,24 @@ export function MessageReactions({
               <Button
                 size="sm"
                 variant={hasReacted ? "default" : "ghost"}
-                className={`h-6 px-2 text-xs ${hasReacted ? "bg-primary/10 hover:bg-primary/20" : ""}`}
+                className={`h-6 px-2 text-xs relative overflow-visible ${hasReacted ? "bg-primary/10 hover:bg-primary/20" : ""}`}
                 onClick={() => handleReactionClick(emoji)}
               >
-                <span className="mr-1">{emoji}</span>
-                <span>{count}</span>
+                <AnimatedEmojiCluster 
+                  emojis={Array(1).fill(emoji)} 
+                  size="sm" 
+                />
+                <span className="ml-1">{count}</span>
+                
+                {/* Show bounce animation when this is the recently added emoji */}
+                {recentlyAddedEmoji === emoji && (
+                  <motion.span 
+                    className="absolute inset-0 rounded-full bg-primary/30"
+                    initial={{ scale: 0, opacity: 0.8 }}
+                    animate={{ scale: 2, opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                  />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
@@ -175,10 +210,10 @@ export function MessageReactions({
                 key={emoji}
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 hover:scale-110 transition-transform"
                 onClick={() => handleReactionClick(emoji)}
               >
-                {emoji}
+                <AnimatedEmoji emoji={emoji} size="sm" />
               </Button>
             ))}
           </div>
