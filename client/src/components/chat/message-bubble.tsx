@@ -233,6 +233,7 @@ export function MessageBubble({
                     conversationId={conversationId}
                     isCurrentUser={isCurrentUser}
                     isDeleted={message.isDeleted || false}
+                    messageContent={decryptedContent}
                     onEdit={() => setIsEditing(true)}
                     onReply={() => setIsReplying(true)}
                     conversations={conversations}
