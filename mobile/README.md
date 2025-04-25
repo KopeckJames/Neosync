@@ -1,32 +1,32 @@
-# NeoSync Mobile Application
+# NeoSync Mobile App
 
-This directory contains the React Native iOS application for NeoSync, a quantum-secure messaging platform.
-
-## Overview
-
-The NeoSync mobile app enables iOS users to communicate with web users of the same platform. It shares the same backend infrastructure and encryption protocols as the web version, ensuring secure cross-platform communication.
+This is the React Native-based iOS application for NeoSync, a quantum-secure messaging platform.
 
 ## Features
 
 - End-to-end encrypted messaging
-- User authentication and registration
-- Real-time messaging with WebSockets
-- File and media sharing
-- Group conversations
+- Secure authentication
+- Real-time updates via WebSockets
+- Media sharing
 - Profile management
-- Push notifications (when deployed)
+- Dark mode UI
 
-## Development Setup
+## Getting Started
 
-1. Install dependencies:
+### Prerequisites
+
+- Node.js v16+
+- npm or yarn
+- Expo CLI (`npm install -g expo-cli`)
+- iOS device or simulator
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
    ```
    cd mobile
    npm install
-   ```
-
-2. Install Expo CLI globally:
-   ```
-   npm install -g expo-cli
    ```
 
 3. Start the development server:
@@ -34,67 +34,50 @@ The NeoSync mobile app enables iOS users to communicate with web users of the sa
    npm start
    ```
 
-4. To run on iOS simulator:
-   ```
-   npm run ios
-   ```
+4. Open the app in Expo Go:
+   - Scan the QR code with your iOS device camera
+   - Or press 'i' in the terminal to open in iOS simulator
 
-## App Store Preparation
+## Development
 
-To publish this app to the Apple App Store, follow these steps:
+### Project Structure
 
-1. **Apple Developer Account**:
-   - Register for an Apple Developer account ($99/year) at [developer.apple.com](https://developer.apple.com)
+```
+mobile/
+├── assets/           # App icons, splash screens
+├── src/
+│   ├── components/   # Reusable UI components
+│   ├── contexts/     # React contexts (e.g., AuthContext)
+│   ├── hooks/        # Custom React hooks
+│   ├── navigation/   # Navigation configuration
+│   ├── screens/      # App screens
+│   ├── services/     # API services and utilities
+│   ├── types/        # TypeScript types
+│   └── config.ts     # App configuration
+├── app.json         # Expo configuration
+├── package.json     # Dependencies and scripts
+└── tsconfig.json    # TypeScript configuration
+```
 
-2. **App Store Connect Setup**:
-   - Create a new app in App Store Connect
-   - Configure app details, pricing, and availability
+### API Integration
 
-3. **App Icons and Assets**:
-   - Prepare required app icons (various sizes)
-   - Create screenshots for App Store listing
-   - Prepare app preview videos (optional)
+The mobile app communicates with the NeoSync backend API. The API base URL is configured in `src/config.ts` and will automatically switch between development and production URLs based on the build environment.
 
-4. **App Store Information**:
-   - Write compelling app description
-   - Choose appropriate categories and keywords
-   - Prepare privacy policy URL
+### Authentication
 
-5. **Build and Submit**:
-   - Create a production build:
-     ```
-     expo build:ios
-     ```
-   - Use Xcode to archive and upload the build
-   - Submit for review in App Store Connect
+Authentication is handled via tokens, which are securely stored using AsyncStorage. The `AuthContext` provides login, registration, and user state management throughout the app.
 
-## Required Modifications for Production
+## Building for Production
 
-1. **Push Notifications**:
-   - Implement Apple Push Notification service (APNs)
-   - Configure push notification certificates
+See the `IOS_DEPLOYMENT_GUIDE.md` file for detailed instructions on:
 
-2. **Deep Linking**:
-   - Set up Universal Links for deep linking into the app
+1. Testing with Expo Go
+2. Building for TestFlight
+3. Submitting to the App Store
 
-3. **App Store Guidelines Compliance**:
-   - Ensure all functionality complies with App Store Review Guidelines
-   - Add in-app privacy disclosures
+## Contributing
 
-4. **Backend Configuration**:
-   - Update API endpoints to production URLs
-   - Ensure proper SSL certificate setup
-   - Configure proper rate limiting and API security
-
-## Cross-Platform Compatibility
-
-This app is designed to communicate seamlessly with the web version. All messages and media sent from the iOS app can be received on the web client and vice versa.
-
-## Key Technical Components
-
-- **Authentication**: SharedAuth context that works with AsyncStorage
-- **Real-time Communication**: WebSocket implementation
-- **Navigation**: React Navigation for screen management
-- **State Management**: React Query for data fetching and caching
-- **UI Components**: Custom React Native components with unified styling
-- **End-to-End Encryption**: Same encryption library as web for compatibility
+1. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Commit your changes (`git commit -m 'Add some amazing feature'`)
+3. Push to the branch (`git push origin feature/amazing-feature`)
+4. Open a Pull Request

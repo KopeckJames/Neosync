@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#0a0a0a"/>
+  <text x="512" y="450" font-family="Arial, sans-serif" font-size="100" font-weight="bold" text-anchor="middle" fill="#ffffff">NeoSync</text>
+  <text x="512" y="550" font-family="Arial, sans-serif" font-size="32" text-anchor="middle" fill="#6366f1">Quantum-Secure Messaging</text>
+  <path d="M512 212C644.4 212 752 319.6 752 452C752 530.4 718.4 601.6 664 652L664 752L360 752L360 652C305.6 601.6 272 530.4 272 452C272 319.6 379.6 212 512 212Z" fill="#ffffff" fill-opacity="0.1"/>
+  <path d="M664 752L360 752L360 812L664 812L664 752Z" fill="#ffffff" fill-opacity="0.1"/>
+</svg>

@@ -60,7 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${API_URL}/api/user`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Client-Type': 'mobile'  // Indicate this is a mobile client
         }
       });
       
@@ -68,7 +69,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Failed to fetch user data');
       }
       
-      return response.json();
+      const data = await response.json();
+      
+      // If we get a new token, update it
+      if (data.token) {
+        await AsyncStorage.setItem('auth_token', data.token);
+        setToken(data.token);
+      }
+      
+      return data;
     },
     enabled: !!token,
   });
@@ -79,7 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Client-Type': 'mobile'  // Indicate this is a mobile client
         },
         body: JSON.stringify(credentials)
       });
@@ -92,6 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data;
     },
     onSuccess: async (data) => {
+      if (!data.token) {
+        throw new Error('No authentication token received from server');
+      }
       await AsyncStorage.setItem('auth_token', data.token);
       setToken(data.token);
       refetch();
@@ -107,7 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${API_URL}/api/register`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Client-Type': 'mobile'  // Indicate this is a mobile client
         },
         body: JSON.stringify(credentials)
       });
@@ -120,6 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data;
     },
     onSuccess: async (data) => {
+      if (!data.token) {
+        throw new Error('No authentication token received from server');
+      }
       await AsyncStorage.setItem('auth_token', data.token);
       setToken(data.token);
       refetch();
@@ -136,7 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Client-Type': 'mobile'  // Indicate this is a mobile client
         }
       });
       

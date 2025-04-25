@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "NeoSync",
+    "slug": "neosync",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.neosync",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to allow you to share photos in your conversations.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photos to let you share them in your conversations.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone to enable voice calls with your contacts."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
+      "package": "com.yourcompany.neosync",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-document-picker",
+      "expo-image-picker",
+      "expo-media-library"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}
