@@ -38,6 +38,7 @@ interface MessageActionsProps {
   conversationId: number;
   isCurrentUser: boolean;
   isDeleted: boolean;
+  messageContent: string | null;
   onEdit: () => void;
   onReply: () => void;
   conversations: ConversationWithLastMessage[];
@@ -48,6 +49,7 @@ export function MessageActions({
   conversationId,
   isCurrentUser,
   isDeleted,
+  messageContent,
   onEdit,
   onReply,
   conversations

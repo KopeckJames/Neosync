@@ -83,7 +83,9 @@ export function MessageForward({
         ${isCurrentUser ? "justify-end ml-auto" : "justify-start mr-auto"}
         bg-muted/10 italic text-muted-foreground`}
     >
-      <span>Forwarded from {forwardedFrom.sender.displayName}</span>
+      <span>
+        Forwarded from {forwardedFrom.sender?.displayName || "Unknown user"}
+      </span>
     </div>
   );
 }
