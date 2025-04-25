@@ -1,10 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { MessageWithUser, AttachmentWithThumbnail } from "@shared/schema";
+import { MessageWithUser, AttachmentWithThumbnail, ConversationWithLastMessage } from "@shared/schema";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
-import { Lock } from "lucide-react";
+import { Lock, Check, Clock } from "lucide-react";
 import { AttachmentPreview } from "./attachment-preview";
+import { MessageReactions } from "./message-reactions";
+import { MessageEdit } from "./message-edit";
+import { MessageActions } from "./message-actions";
+import { MessageReply, MessageForward } from "./message-reply";
 
 interface MessageBubbleProps {
   message: MessageWithUser;

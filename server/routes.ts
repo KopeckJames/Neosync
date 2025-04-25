@@ -608,13 +608,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? conversation.user2Id 
         : conversation.user1Id;
         
-      const otherUserWs = wsClients.get(otherUserId);
-      if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
-        otherUserWs.send(JSON.stringify({
-          type: 'messages_read',
-          conversationId: conversationId,
-          readBy: currentUser.id
-        }));
+      if (otherUserId) { // Check that otherUserId is not null (for group conversations)
+        const otherUserWs = wsClients.get(otherUserId);
+        if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+          otherUserWs.send(JSON.stringify({
+            type: 'messages_read',
+            conversationId: conversationId,
+            readBy: currentUser.id
+          }));
+        }
       }
       
       res.json(messages);
