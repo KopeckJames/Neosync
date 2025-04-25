@@ -1106,6 +1106,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Forward a message to another conversation
+  app.post('/api/messages/:messageId/forward', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const messageId = parseInt(req.params.messageId);
+      const { conversationId } = req.body;
+      
+      if (!conversationId) {
+        return res.status(400).send('ConversationId is required');
+      }
+      
+      // Get the message to check if it exists
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      // Get the target conversation to check if it exists and if the user has access to it
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      // Verify the user is part of the target conversation
+      let receiverId: number | undefined;
+      if (conversation.isGroup) {
+        // For group chats, check if user is a member
+        const members = await storage.getGroupMembers(conversation.id);
+        const isMember = members.some(member => member.userId === currentUser.id);
+        if (!isMember) {
+          return res.status(403).send('You are not a member of this conversation');
+        }
+      } else {
+        // For direct messages, check if user is part of the conversation
+        if (conversation.user1Id !== currentUser.id && conversation.user2Id !== currentUser.id) {
+          return res.status(403).send('Access denied');
+        }
+        
+        // Set receiverId for direct messages
+        receiverId = conversation.user1Id === currentUser.id 
+          ? conversation.user2Id 
+          : conversation.user1Id;
+      }
+      
+      // Forward the message
+      const forwardedMessage = await storage.forwardMessage(
+        messageId,
+        conversationId,
+        currentUser.id,
+        conversation.isGroup ? undefined : receiverId
+      );
+      
+      // Get enhanced message with sender info
+      const messageWithUser = await storage.getMessageById(forwardedMessage.id);
+      if (!messageWithUser) {
+        return res.status(500).send('Failed to retrieve forwarded message');
+      }
+      
+      // Notify recipients in target conversation via WebSocket
+      if (conversation.isGroup) {
+        const members = await storage.getGroupMembers(conversation.id);
+        for (const member of members) {
+          if (member.userId !== currentUser.id) {
+            const memberWs = wsClients.get(member.userId);
+            if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+              memberWs.send(JSON.stringify({
+                type: 'new_message',
+                message: messageWithUser,
+                forwardedFrom: message
+              }));
+            }
+          }
+        }
+      } else if (receiverId) {
+        const receiverWs = wsClients.get(receiverId);
+        if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+          receiverWs.send(JSON.stringify({
+            type: 'new_message',
+            message: messageWithUser,
+            forwardedFrom: message
+          }));
+        }
+      }
+      
+      res.status(201).json(messageWithUser);
+    } catch (error) {
+      console.error('Error forwarding message:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
   // Delete a message
   app.delete('/api/messages/:messageId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
@@ -1173,104 +1266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Forward a message
-  app.post('/api/messages/:messageId/forward', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
-    
-    try {
-      const currentUser = req.user as User;
-      const messageId = parseInt(req.params.messageId);
-      const { conversationId, receiverId } = req.body;
-      
-      if (!conversationId) {
-        return res.status(400).send('ConversationId is required');
-      }
-      
-      // Get the message to check if it exists
-      const message = await storage.getMessageById(messageId);
-      if (!message) {
-        return res.status(404).send('Message not found');
-      }
-      
-      // Get the target conversation to check if it exists and if the user has access to it
-      const conversation = await storage.getConversationById(conversationId);
-      if (!conversation) {
-        return res.status(404).send('Conversation not found');
-      }
-      
-      // Verify the user is part of the target conversation
-      if (conversation.isGroup) {
-        // For group chats, check if user is a member
-        const members = await storage.getGroupMembers(conversation.id);
-        const isMember = members.some(member => member.userId === currentUser.id);
-        if (!isMember) {
-          return res.status(403).send('You are not a member of this conversation');
-        }
-      } else {
-        // For direct messages, check if user is part of the conversation
-        if (conversation.user1Id !== currentUser.id && conversation.user2Id !== currentUser.id) {
-          return res.status(403).send('Access denied');
-        }
-      }
-      
-      // Forward the message
-      const forwardedMessage = await storage.forwardMessage(
-        messageId,
-        conversationId,
-        currentUser.id,
-        conversation.isGroup ? undefined : receiverId
-      );
-      
-      // Get sender info for the response
-      const { password, ...senderWithoutPassword } = currentUser;
-      
-      // Get the original message for the response
-      const originalMessage = await storage.getMessageById(messageId);
-      
-      const messageWithUser = {
-        ...forwardedMessage,
-        sender: senderWithoutPassword,
-        forwardedFrom: originalMessage
-      };
-      
-      // Notify recipients of the new message
-      if (conversation.isGroup) {
-        // For group chats, notify all members except the current user
-        const members = await storage.getGroupMembers(conversation.id);
-        for (const member of members) {
-          if (member.userId !== currentUser.id) {
-            const memberWs = wsClients.get(member.userId);
-            if (memberWs && memberWs.readyState === WebSocket.OPEN) {
-              memberWs.send(JSON.stringify({
-                type: 'new_message',
-                message: messageWithUser
-              }));
-            }
-          }
-        }
-      } else {
-        // For direct messages, notify the other user
-        const otherUserId = conversation.user1Id === currentUser.id 
-          ? conversation.user2Id 
-          : conversation.user1Id;
-          
-        if (otherUserId) {
-          const otherUserWs = wsClients.get(otherUserId);
-          if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
-            otherUserWs.send(JSON.stringify({
-              type: 'new_message',
-              message: messageWithUser
-            }));
-          }
-        }
-      }
-      
-      res.status(201).json(messageWithUser);
-    } catch (error) {
-      console.error('Error forwarding message:', error);
-      res.status(500).send('Server error');
-    }
-  });
+
   
   // Group conversation endpoints
   
