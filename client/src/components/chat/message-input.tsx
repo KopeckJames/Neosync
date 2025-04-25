@@ -5,6 +5,7 @@ import { Smile, Camera, Send, Paperclip } from "lucide-react";
 import { useWebSocket } from "@/lib/use-websocket";
 import { FileUploader } from "./file-uploader";
 import { MessageWithUser } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface MessageInputProps {
   onSendMessage: (content: string) => void;
