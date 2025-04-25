@@ -176,12 +176,14 @@ export function MessageBubble({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
-                      className={`p-3 rounded-lg ${
+                      className={`p-3 rounded-xl shadow-sm transition-all hover:shadow-md ${
                         isCurrentUser
-                          ? "bg-primary text-primary-foreground rounded-br-none"
-                          : "bg-secondary rounded-bl-none"
+                          ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-none backdrop-blur-sm"
+                          : "bg-secondary/80 rounded-bl-none backdrop-blur-sm border border-secondary/50"
                       } ${message.isDeleted ? "italic opacity-60" : ""} 
-                      ${decryptError ? "bg-destructive/20 border border-destructive/50" : ""}`}
+                      ${decryptError ? "bg-destructive/20 border border-destructive/50" : ""}
+                      slide-up`}
+                      style={{ animationDelay: `${Math.random() * 0.3}s` }}
                     >
                       {/* Content for deleted messages */}
                       {message.isDeleted ? (
@@ -255,14 +257,21 @@ export function MessageBubble({
           
           {/* Time and read status (for sent messages) */}
           {isCurrentUser && (
-            <div className="flex items-center gap-1 mt-1 text-right">
-              <span className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 mt-2 text-right">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/40 text-muted-foreground backdrop-blur-sm">
                 {format(timestamp, "h:mm a")}
               </span>
               {message.isEncrypted && (
-                <Lock className="h-3 w-3 text-primary" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs backdrop-blur-sm">
+                  <Lock className="h-3 w-3" />
+                  <span>Encrypted</span>
+                </span>
               )}
-              <span className={`text-xs ${message.isRead ? "text-primary" : "text-muted-foreground"}`}>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs backdrop-blur-sm ${
+                message.isRead 
+                  ? "bg-success/10 text-success" 
+                  : "bg-secondary/40 text-muted-foreground"
+              }`}>
                 {message.isRead ? (
                   <>
                     <svg 
@@ -295,12 +304,15 @@ export function MessageBubble({
           
           {/* Time (for received messages) */}
           {!isCurrentUser && (
-            <div className="flex items-center gap-1 mt-1 text-left">
-              <span className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 mt-2 text-left">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/40 text-muted-foreground backdrop-blur-sm">
                 {format(timestamp, "h:mm a")}
               </span>
               {message.isEncrypted && (
-                <Lock className="h-3 w-3 text-primary" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs backdrop-blur-sm">
+                  <Lock className="h-3 w-3" />
+                  <span>Encrypted</span>
+                </span>
               )}
             </div>
           )}

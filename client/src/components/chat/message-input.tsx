@@ -157,21 +157,31 @@ export function MessageInput({
   };
 
   return (
-    <div className="p-3 border-t border-gray-200 dark:border-gray-800">
-      <div className="flex items-end gap-2">
-        <Button variant="ghost" size="icon" className="rounded-full flex-shrink-0">
-          <Smile className="h-5 w-5 text-muted-foreground" />
+    <div className="p-4 border-t border-border backdrop-blur-sm relative">
+      {/* Decorative elements */}
+      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-16 h-1.5 rounded-full bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20"></div>
+      
+      <div className="flex items-end gap-3 relative z-10">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="rounded-full flex-shrink-0 bg-secondary/60 hover:bg-secondary/80 shadow-sm backdrop-blur-sm border-secondary/50 transition-all duration-300 hover:scale-105"
+        >
+          <Smile className="h-5 w-5 text-accent" />
         </Button>
-        <FileUploader 
-          conversationId={conversationId}
-          receiverId={receiverId}
-          onFileUploaded={(response) => {
-            if (onFileUploaded) {
-              onFileUploaded(response);
-            }
-          }}
-          disabled={isSending || isCapturingImage}
-        />
+        
+        <div className="rounded-full bg-gradient-to-r from-primary/10 to-accent/10 p-0.5 backdrop-blur-sm transition-all duration-300 hover:shadow-md">
+          <FileUploader 
+            conversationId={conversationId}
+            receiverId={receiverId}
+            onFileUploaded={(response) => {
+              if (onFileUploaded) {
+                onFileUploaded(response);
+              }
+            }}
+            disabled={isSending || isCapturingImage}
+          />
+        </div>
         
         {/* Hidden camera input element */}
         <input
@@ -185,9 +195,10 @@ export function MessageInput({
         />
         
         <div className="flex-1 relative">
+          <div className="absolute inset-0 rounded-full bg-secondary/30 backdrop-blur-sm shadow-inner z-0"></div>
           <Textarea
-            placeholder="Message"
-            className="resize-none min-h-[44px] max-h-32 pr-10 py-3 rounded-full bg-secondary"
+            placeholder="Type a quantum-secure message..."
+            className="resize-none min-h-[48px] max-h-32 pr-12 py-3 rounded-full bg-transparent border-secondary/50 relative z-10 focus-visible:ring-primary/50 placeholder:text-muted-foreground/70"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -196,21 +207,21 @@ export function MessageInput({
           <Button 
             variant="ghost" 
             size="icon" 
-            className="absolute right-2 bottom-1 rounded-full h-8 w-8"
+            className="absolute right-2 bottom-1.5 rounded-full h-9 w-9 bg-secondary/60 hover:bg-secondary/80 z-10 transition-all duration-300"
             onClick={handleCameraClick}
             disabled={isSending || isCapturingImage}
           >
             {isCapturingImage ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : (
-              <Camera className="h-5 w-5 text-muted-foreground" />
+              <Camera className="h-5 w-5 text-accent" />
             )}
           </Button>
         </div>
         
         <Button 
           size="icon" 
-          className="rounded-full h-11 w-11 flex-shrink-0"
+          className="rounded-full h-12 w-12 flex-shrink-0 bg-gradient-to-br from-primary to-accent text-white shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-70"
           onClick={handleSendMessage}
           disabled={!message.trim() || isSending}
         >
@@ -220,6 +231,11 @@ export function MessageInput({
             <Send className="h-5 w-5" />
           )}
         </Button>
+      </div>
+      
+      {/* Hint text */}
+      <div className="text-xs text-center text-muted-foreground/60 mt-2">
+        End-to-end encrypted • Quantum-secure
       </div>
     </div>
   );
