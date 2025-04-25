@@ -9,6 +9,7 @@ import { MessageReactions } from "./message-reactions";
 import { MessageEdit } from "./message-edit";
 import { MessageActions } from "./message-actions";
 import { MessageReply, MessageForward } from "./message-reply";
+import { AnimatedText } from "./animated-text";
 
 interface MessageBubbleProps {
   message: MessageWithUser;
@@ -187,12 +188,24 @@ export function MessageBubble({
                     >
                       {/* Content for deleted messages */}
                       {message.isDeleted ? (
-                        <p className="text-muted-foreground">This message was deleted</p>
+                        <AnimatedText 
+                          text="This message was deleted" 
+                          animationType="fade"
+                          className="text-muted-foreground italic"
+                        />
                       ) : (
                         <>
                           {/* Show the message content if it exists */}
                           {decryptedContent && (
-                            <p className="whitespace-pre-wrap break-words">{decryptedContent}</p>
+                            <AnimatedText
+                              text={decryptedContent}
+                              animationType={
+                                message.isEncrypted ? "fade" : 
+                                message.highlighted ? "scale" : 
+                                Math.random() > 0.7 ? "wave" : "typewriter"
+                              }
+                              speed={message.content && message.content.length > 100 ? "fast" : "normal"}
+                            />
                           )}
                           
                           {/* Show attachments if any */}

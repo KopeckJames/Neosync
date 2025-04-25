@@ -97,6 +97,36 @@
   }
 }
 
+@keyframes typewriter {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  25% {
+    transform: translateY(-5px);
+  }
+  75% {
+    transform: translateY(3px);
+  }
+}
+
 /* Utility Classes */
 .highlight-message {
   animation: highlight-fade 2s ease-out;
@@ -164,6 +194,25 @@
 
 .animate-float-away {
   animation: float-away 2s ease-out forwards;
+}
+
+.animate-wave {
+  animation: wave 2s ease-in-out infinite;
+}
+
+.animate-typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  display: inline-block;
+  position: relative;
+  animation: typewriter 2s steps(40) forwards;
+}
+
+.animate-typewriter::after {
+  content: '|';
+  position: absolute;
+  right: 0;
+  animation: blink 0.8s infinite;
 }
 
 :root {
