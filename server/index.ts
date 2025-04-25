@@ -3,6 +3,10 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase } from "./db-init";
 
+// Manually set USE_DATABASE to true since we're using Supabase
+process.env.USE_DATABASE = 'true';
+log('Set USE_DATABASE=true for Supabase integration');
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
