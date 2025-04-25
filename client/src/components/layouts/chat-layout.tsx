@@ -44,6 +44,54 @@ export function ChatLayout() {
           queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
           break;
           
+        case 'message_deleted':
+          // Handle message deletion
+          if (activeConversation && message.conversationId === activeConversation.id) {
+            queryClient.setQueryData(
+              [`/api/conversations/${activeConversation.id}/messages`],
+              (oldMessages: MessageWithUser[] = []) => {
+                return oldMessages.map(msg => {
+                  if (msg.id === message.messageId) {
+                    // Mark message as deleted and clear content
+                    return { 
+                      ...msg, 
+                      isDeleted: true, 
+                      content: null 
+                    };
+                  }
+                  return msg;
+                });
+              }
+            );
+            
+            // Update conversations list to reflect changes
+            queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+          }
+          break;
+          
+        case 'message_edited':
+          // Handle message editing
+          const editedMessage = message.message as MessageWithUser;
+          
+          if (activeConversation && editedMessage.conversationId === activeConversation.id) {
+            queryClient.setQueryData(
+              [`/api/conversations/${activeConversation.id}/messages`],
+              (oldMessages: MessageWithUser[] = []) => {
+                return oldMessages.map(msg => {
+                  if (msg.id === editedMessage.id) {
+                    // Replace with edited message
+                    return editedMessage;
+                  }
+                  return msg;
+                });
+              }
+            );
+            
+            // Update conversations list to reflect changes
+            queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+          }
+          break;
+          
         case 'messages_read':
           // Update read status of messages
           if (activeConversation && message.conversationId === activeConversation.id) {
