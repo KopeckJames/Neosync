@@ -396,6 +396,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error('Error handling delete_message:', error);
           }
         }
+        
+        // Handle message reaction removal via WebSocket
+        else if (message.type === 'message_reaction_removed' && userId && message.messageId && message.reaction) {
+          try {
+            // Get the message
+            const msg = await storage.getMessageById(message.messageId);
+            if (!msg) return;
+            
+            // Remove the reaction
+            await storage.removeMessageReaction(
+              message.messageId,
+              userId,
+              message.reaction
+            );
+            
+            // Get the conversation to notify other participants
+            const conversation = await storage.getConversationById(msg.conversationId);
+            if (!conversation) return;
+            
+            // Notify other users
+            if (conversation.isGroup) {
+              const members = await storage.getGroupMembers(conversation.id);
+              for (const member of members) {
+                if (member.userId !== userId) {
+                  const memberWs = wsClients.get(member.userId);
+                  if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                    memberWs.send(JSON.stringify({
+                      type: 'message_reaction_removed',
+                      conversationId: conversation.id,
+                      messageId: message.messageId,
+                      userId: userId,
+                      reaction: message.reaction
+                    }));
+                  }
+                }
+              }
+            } else {
+              const otherUserId = conversation.user1Id === userId 
+                ? conversation.user2Id 
+                : conversation.user1Id;
+                
+              if (otherUserId) {
+                const otherUserWs = wsClients.get(otherUserId);
+                if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+                  otherUserWs.send(JSON.stringify({
+                    type: 'message_reaction_removed',
+                    conversationId: conversation.id,
+                    messageId: message.messageId,
+                    userId: userId,
+                    reaction: message.reaction
+                  }));
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error handling message_reaction_removed:', error);
+          }
+        }
+        
+        // Handle message forwarding via WebSocket
+        else if (message.type === 'forward_message' && userId && message.messageId && message.targetConversationId) {
+          try {
+            // Get the message
+            const msg = await storage.getMessageById(message.messageId);
+            if (!msg) return;
+            
+            // Get target conversation
+            const targetConversation = await storage.getConversationById(message.targetConversationId);
+            if (!targetConversation) return;
+            
+            let receiverId: number | undefined;
+            if (!targetConversation.isGroup) {
+              receiverId = targetConversation.user1Id === userId 
+                ? targetConversation.user2Id 
+                : targetConversation.user1Id;
+            }
+            
+            // Forward the message
+            const forwardedMessage = await storage.forwardMessage(
+              message.messageId,
+              message.targetConversationId,
+              userId,
+              receiverId
+            );
+            
+            // Get enhanced message with sender info
+            const messageWithUser = await storage.getMessageById(forwardedMessage.id);
+            if (!messageWithUser) return;
+            
+            // Notify recipients in target conversation
+            if (targetConversation.isGroup) {
+              const members = await storage.getGroupMembers(targetConversation.id);
+              for (const member of members) {
+                if (member.userId !== userId) {
+                  const memberWs = wsClients.get(member.userId);
+                  if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                    memberWs.send(JSON.stringify({
+                      type: 'new_message',
+                      message: messageWithUser,
+                      forwardedFrom: msg
+                    }));
+                  }
+                }
+              }
+            } else if (receiverId) {
+              const receiverWs = wsClients.get(receiverId);
+              if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+                receiverWs.send(JSON.stringify({
+                  type: 'new_message',
+                  message: messageWithUser,
+                  forwardedFrom: msg
+                }));
+              }
+            }
+          } catch (error) {
+            console.error('Error handling forward_message:', error);
+          }
+        }
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
       }
