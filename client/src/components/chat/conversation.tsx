@@ -34,7 +34,13 @@ export function Conversation({
   const [isContactTyping, setIsContactTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { contact } = conversation;
+  const contact = conversation.contact || {
+    id: 0,
+    displayName: "Unknown",
+    avatarColor: null,
+    isOnline: false,
+    lastSeen: null
+  };
   
   // State for incoming calls
   const [incomingCall, setIncomingCall] = useState<{
@@ -213,82 +219,110 @@ export function Conversation({
   return (
     <>
       {/* Chat Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden rounded-full"
-            onClick={onOpenMobileMenu}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          
-          <UserAvatar 
-            user={contact} 
-            size="md"
-            status={contact.isOnline ? "online" : "offline"} 
-          />
-          
-          <div>
-            <h2 className="font-semibold">{contact.displayName}</h2>
-            <p className="text-xs text-muted-foreground">
-              {contact.isOnline 
-                ? "Online" 
-                : contact.lastSeen 
-                  ? `Last seen ${formatDistanceToNow(new Date(contact.lastSeen), { addSuffix: true })}` 
-                  : "Offline"}
-            </p>
-          </div>
-        </div>
+      <div className="relative border-b border-border backdrop-blur-sm">
+        {/* Decorative gradient line */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-accent to-primary"></div>
         
-        <div className="flex items-center gap-1">
-          <CallButtons
-            userId={currentUser.id}
-            contactId={contact.id}
-            contactName={contact.displayName}
-            contactAvatar={contact.avatarColor}
-            incomingCall={incomingCall}
-          />
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Info className="h-5 w-5 text-primary" />
-          </Button>
+        <div className="p-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden rounded-full bg-secondary/60 hover:bg-secondary/80 transition-all duration-300"
+              onClick={onOpenMobileMenu}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            
+            <div className="relative animate-pulse-slow">
+              <UserAvatar 
+                user={contact} 
+                size="md"
+                status={contact.isOnline ? "online" : "offline"} 
+              />
+              <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-background ${contact.isOnline ? 'bg-success animate-pulse' : 'bg-muted'}`}></div>
+            </div>
+            
+            <div>
+              <h2 className="font-bold gradient-text text-lg">{contact.displayName}</h2>
+              <p className={`text-xs ${contact.isOnline ? 'text-success' : 'text-muted-foreground'} flex items-center`}>
+                <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${contact.isOnline ? 'bg-success' : 'bg-muted'}`}></span>
+                {contact.isOnline 
+                  ? "Online now" 
+                  : contact.lastSeen 
+                    ? `Last seen ${formatDistanceToNow(new Date(contact.lastSeen), { addSuffix: true })}` 
+                    : "Offline"}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <CallButtons
+              userId={currentUser.id}
+              contactId={contact.id}
+              contactName={contact.displayName}
+              contactAvatar={contact.avatarColor}
+              incomingCall={incomingCall}
+            />
+            <Button variant="outline" size="icon" className="rounded-full bg-secondary/60 hover:bg-secondary/80 transition-all duration-300 hover:scale-105">
+              <Info className="h-5 w-5 text-accent" />
+            </Button>
+          </div>
         </div>
       </div>
       
       {/* Encryption notice */}
-      <div className="bg-primary/10 dark:bg-primary/20 text-xs text-center py-2 border-b border-gray-200 dark:border-gray-800">
-        <svg className="inline-block w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M19 11H5C3.89543 11 3 11.8954 3 13V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V13C21 11.8954 20.1046 11 19 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Quantum-secure encryption active with {contact.displayName}. Tap for more info.
+      <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 backdrop-blur-sm text-xs text-center py-2 border-b border-border flex items-center justify-center gap-2">
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/20">
+          <svg className="w-3 h-3 text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 11H5C3.89543 11 3 11.8954 3 13V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V13C21 11.8954 20.1046 11 19 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+        <span>Quantum-secure encryption active with <span className="font-semibold">{contact.displayName}</span></span>
       </div>
       
       {/* Chat Messages */}
       <ScrollArea className="flex-1 p-4 space-y-4 overflow-auto">
         {messagesLoading ? (
-          <div className="flex justify-center p-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          <div className="flex flex-col items-center justify-center h-full p-4">
+            <div className="relative mb-6">
+              <div className="w-12 h-12 rounded-full bg-primary/20 animate-pulse"></div>
+              <div className="w-12 h-12 rounded-full bg-primary/30 animate-pulse absolute top-0 scale-75 opacity-80"></div>
+              <div className="w-12 h-12 rounded-full bg-primary/40 animate-pulse absolute top-0 scale-50 opacity-60"></div>
+            </div>
+            <p className="text-sm text-muted-foreground animate-pulse">Loading conversation...</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-full mb-4">
-              <svg className="w-8 h-8 text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 9H16M8 13H14M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+          <div className="flex flex-col items-center justify-center h-full text-center p-8">
+            <div className="relative mb-6">
+              <div className="bg-gradient-to-br from-primary/20 to-accent/20 p-5 rounded-full mb-4 shadow-inner backdrop-blur-sm animate-pulse-slow">
+                <svg className="w-10 h-10 gradient-text" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 9H16M8 13H14M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              
+              {/* Decorative elements */}
+              <div className="absolute -right-4 top-1/2 w-2 h-2 rounded-full bg-primary/40 animate-float" style={{ animationDelay: '0.2s' }}></div>
+              <div className="absolute -left-3 bottom-0 w-1.5 h-1.5 rounded-full bg-accent/50 animate-float" style={{ animationDelay: '0.8s' }}></div>
             </div>
-            <h3 className="text-lg font-medium mb-2">No messages yet</h3>
-            <p className="text-muted-foreground text-sm max-w-sm">
-              Start the conversation by sending a message below.
-            </p>
+            
+            <div className="max-w-xs slide-up">
+              <h3 className="text-xl font-bold gradient-text mb-3">Start a conversation</h3>
+              <div className="p-3 rounded-lg backdrop-blur-sm bg-card/30 border border-border/50">
+                <p className="text-muted-foreground">
+                  Send your first quantum-secure message to begin chatting with {contact.displayName}.
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           Object.entries(groupedMessages).map(([date, dateMessages]) => (
             <div key={date}>
               {/* Date separator */}
-              <div className="flex justify-center my-4">
-                <span className="text-xs bg-secondary text-muted-foreground px-3 py-1 rounded-full">
+              <div className="flex justify-center my-6 relative">
+                <div className="absolute left-0 right-0 top-1/2 h-px bg-border"></div>
+                <span className="relative z-10 text-xs bg-gradient-to-r from-primary/10 to-accent/10 backdrop-blur-sm text-muted-foreground px-4 py-1.5 rounded-full border border-border/50 shadow-sm">
                   {formatDate(date)}
                 </span>
               </div>
@@ -308,6 +342,9 @@ export function Conversation({
                     isCurrentUser={isCurrentUser}
                     showAvatar={showAvatar}
                     contact={contact}
+                    conversationId={conversation.id}
+                    currentUserId={currentUser.id}
+                    conversations={[]}
                   />
                 );
               })}
