@@ -1,0 +1,45 @@
+Running expo install expo-dev-client
+
+[expo-cli] › Installing 1 SDK 49.0.0 compatible native module using npm
+[expo-cli] > npm install
+[expo-cli] npm error code ERESOLVE
+[expo-cli] npm error ERESOLVE unable to resolve dependency tree
+[expo-cli] npm error
+[expo-cli] npm error While resolving: neosync-mobile@1.0.0
+[expo-cli] npm error Found: react@18.2.0
+[expo-cli] npm error node_modules/react
+[expo-cli] npm error   react@"18.2.0" from the root project
+[expo-cli] npm error   peer react@"^18.0.0" from react-native-web@0.19.13
+[expo-cli] npm error   node_modules/react-native-web
+[expo-cli] npm error     react-native-web@"~0.19.6" from the root project
+[expo-cli] npm error
+[expo-cli] npm error Could not resolve dependency:
+[expo-cli] npm error peer react@"^18.3.1" from react-dom@18.3.1
+[expo-cli] npm error node_modules/react-dom
+[expo-cli] npm error   peer react-dom@"^18.0.0" from react-native-web@0.19.13
+[expo-cli] npm error   node_modules/react-native-web
+[expo-cli] npm error     react-native-web@"~0.19.6" from the root project
+[expo-cli] npm error
+[expo-cli] npm error Fix the upstream dependency conflict, or retry
+[expo-cli] npm error this command with --force or --legacy-peer-deps
+[expo-cli] npm error to accept an incorrect (and potentially broken) dependency resolution.
+[expo-cli] npm error
+[expo-cli] npm error
+[expo-cli] npm error For a full report see:
+[expo-cli] npm error /home/runner/.npm/_logs/2025-04-25T02_19_05_581Z-eresolve-report.txt
+[expo-cli] npm error A complete log of this run can be found in: /home/runner/.npm/_logs/2025-04-25T02_19_05_581Z-debug-0.log
+[expo-cli] Error: npm exited with non-zero code: 1
+[expo-cli] Error: npm exited with non-zero code: 1
+[expo-cli]     at ChildProcess.completionListener (/home/runner/workspace/node_modules/@expo/spawn-async/build/spawnAsync.js:52:23)
+[expo-cli]     at Object.onceWrapper (node:events:633:26)
+[expo-cli]     at ChildProcess.emit (node:events:518:28)
+[expo-cli]     at maybeClose (node:internal/child_process:1104:16)
+[expo-cli]     at ChildProcess._handle.onexit (node:internal/child_process:304:5)
+[expo-cli]     ...
+[expo-cli]     at spawnAsync (/home/runner/workspace/node_modules/@expo/spawn-async/build/spawnAsync.js:17:21)
+[expo-cli]     at NpmPackageManager.runAsync (/home/runner/workspace/node_modules/@expo/cli/node_modules/@expo/package-manager/build/node/BasePackageManager.js:38:42)
+[expo-cli]     at /home/runner/workspace/node_modules/@expo/cli/node_modules/@expo/package-manager/build/node/NpmPackageManager.js:38:20
+[expo-cli]     at /home/runner/workspace/node_modules/@expo/cli/node_modules/@expo/package-manager/build/utils/spawn.js:19:34
+/home/runner/workspace/node_modules/expo/bin/cli install expo-dev-client exited with non-zero code: 1
+    Error: build command failed.
+[INFO] Done!

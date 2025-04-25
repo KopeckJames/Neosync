@@ -23,9 +23,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "YOUR_APPLE_ID_EMAIL",
-        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        "appleId": "futuristicfotography@icloud.com",
+        "ascAppId": "6745059307",
+        "appleTeamId": "R7UQ8J92N9"
       }
     }
   }

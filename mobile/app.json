@@ -16,12 +16,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.neosync",
+      "bundleIdentifier": "app.neosync.messenger",
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to allow you to share photos in your conversations.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photos to let you share them in your conversations.",
-        "NSMicrophoneUsageDescription": "This app uses the microphone to enable voice calls with your contacts."
+        "NSMicrophoneUsageDescription": "This app uses the microphone to enable voice calls with your contacts.",
+        "UIBackgroundModes": [
+          "remote-notification",
+          "voip"
+        ]
       }
     },
     "android": {
@@ -29,7 +33,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"
       },
-      "package": "com.yourcompany.neosync",
+      "package": "app.neosync.messenger",
       "versionCode": 1,
       "permissions": [
         "CAMERA",
@@ -51,6 +55,12 @@
       "eas": {
         "projectId": "your-eas-project-id"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/your-eas-project-id"
     }
   }
 }
