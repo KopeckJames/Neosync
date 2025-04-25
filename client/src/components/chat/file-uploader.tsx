@@ -12,13 +12,17 @@ interface FileUploaderProps {
   receiverId?: number;
   onFileUploaded: (response: any) => void;
   disabled?: boolean;
+  allowedFileTypes?: string[];
+  maxFileSize?: number;
 }
 
 export function FileUploader({
   conversationId,
   receiverId,
   onFileUploaded,
-  disabled = false
+  disabled = false,
+  allowedFileTypes,
+  maxFileSize
 }: FileUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -27,11 +31,11 @@ export function FileUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // File size limit (50MB)
-  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+  // File size limit (50MB or custom value)
+  const MAX_FILE_SIZE = maxFileSize || 50 * 1024 * 1024;
 
-  // Supported file types
-  const SUPPORTED_TYPES = [
+  // Supported file types (default or custom)
+  const SUPPORTED_TYPES = allowedFileTypes || [
     // Images
     'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
     // Videos
@@ -196,6 +200,7 @@ export function FileUploader({
         onChange={handleFileChange}
         className="hidden"
         disabled={disabled || isUploading}
+        accept={SUPPORTED_TYPES.join(',')}
       />
 
       {!selectedFile ? (

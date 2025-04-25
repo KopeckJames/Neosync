@@ -24,8 +24,11 @@ export function MessageInput({
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isCapturingImage, setIsCapturingImage] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { sendMessage } = useWebSocket();
+  const { toast } = useToast();
 
   // Send typing indicator when user types
   useEffect(() => {
@@ -90,6 +93,68 @@ export function MessageInput({
       handleSendMessage();
     }
   };
+  
+  const handleCameraClick = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+  
+  const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    
+    if (!file || !receiverId) {
+      return;
+    }
+    
+    try {
+      setIsCapturingImage(true);
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('receiverId', receiverId.toString());
+      
+      if (conversationId) {
+        formData.append('conversationId', conversationId.toString());
+      }
+      
+      // Upload the image
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      // Notify parent about the uploaded file
+      if (onFileUploaded) {
+        onFileUploaded(result);
+      }
+      
+      toast({
+        title: 'Image uploaded',
+        description: 'Your image has been sent'
+      });
+      
+      // Reset the file input
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
+      }
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCapturingImage(false);
+    }
+  };
 
   return (
     <div className="p-3 border-t border-gray-200 dark:border-gray-800">
@@ -105,7 +170,18 @@ export function MessageInput({
               onFileUploaded(response);
             }
           }}
-          disabled={isSending}
+          disabled={isSending || isCapturingImage}
+        />
+        
+        {/* Hidden camera input element */}
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          ref={cameraInputRef}
+          onChange={handleCameraCapture}
+          disabled={isSending || isCapturingImage}
         />
         
         <div className="flex-1 relative">
@@ -121,8 +197,14 @@ export function MessageInput({
             variant="ghost" 
             size="icon" 
             className="absolute right-2 bottom-1 rounded-full h-8 w-8"
+            onClick={handleCameraClick}
+            disabled={isSending || isCapturingImage}
           >
-            <Camera className="h-5 w-5 text-muted-foreground" />
+            {isCapturingImage ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <Camera className="h-5 w-5 text-muted-foreground" />
+            )}
           </Button>
         </div>
         
