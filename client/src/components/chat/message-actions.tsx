@@ -193,8 +193,8 @@ export function MessageActions({
             </DropdownMenuItem>
           )}
           
-          {!isDeleted && (
-            <DropdownMenuItem onClick={() => handleCopyText("Message text goes here")}>
+          {!isDeleted && messageContent && (
+            <DropdownMenuItem onClick={() => handleCopyText(messageContent)}>
               <Copy className="h-4 w-4 mr-2" />
               Copy Text
             </DropdownMenuItem>
