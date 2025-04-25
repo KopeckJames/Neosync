@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes highlight-fade {
+  0% {
+    background-color: rgba(var(--primary-rgb), 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlight-message {
+  animation: highlight-fade 2s ease-out;
+}
+
+:root {
+  --primary-rgb: 14, 165, 233; /* Tailwind sky-500 */
+}
+
+.dark {
+  --primary-rgb: 56, 189, 248; /* Tailwind sky-400 */
+}
+
 :root {
       --background: 0 0% 100%;
 --foreground: 20 14.3% 4.1%;

@@ -170,6 +170,8 @@ export type MessageWithUser = Message & {
   replyTo?: MessageWithUser;
   forwardedFrom?: MessageWithUser;
   edits?: MessageEdit[];
+  highlighted?: boolean; // Used for UI to highlight a message when scrolled to
+  scheduledFor?: string; // ISO date string for scheduled messages
 };
 
 export type AttachmentWithThumbnail = Attachment & {
