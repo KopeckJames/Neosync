@@ -246,11 +246,11 @@ export function MessageBubble({
           )}
           
           {/* Message Reactions */}
-          {!message.isDeleted && message.reactions && message.reactions.length > 0 && (
+          {!message.isDeleted && (
             <MessageReactions
               messageId={message.id}
               conversationId={conversationId}
-              reactions={message.reactions}
+              reactions={message.reactions || []}
               currentUserId={currentUserId}
             />
           )}

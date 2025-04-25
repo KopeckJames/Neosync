@@ -92,6 +92,27 @@ export function ChatLayout() {
           }
           break;
           
+        case 'add_reaction':
+        case 'message_reaction':
+          // Handle reaction added
+          if (activeConversation && message.messageId) {
+            // Invalidate messages to refresh reactions for the specific conversation
+            queryClient.invalidateQueries({ 
+              queryKey: [`/api/conversations/${activeConversation.id}/messages`] 
+            });
+          }
+          break;
+          
+        case 'message_reaction_removed':
+          // Handle reaction removed
+          if (activeConversation && message.messageId) {
+            // Invalidate messages to refresh reactions for the specific conversation
+            queryClient.invalidateQueries({ 
+              queryKey: [`/api/conversations/${activeConversation.id}/messages`] 
+            });
+          }
+          break;
+          
         case 'messages_read':
           // Update read status of messages
           if (activeConversation && message.conversationId === activeConversation.id) {
