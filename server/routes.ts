@@ -8,9 +8,12 @@ import {
   insertContactSchema, 
   insertMessageSchema, 
   insertAttachmentSchema,
+  insertMessageReactionSchema,
+  insertGroupMemberSchema,
   User, 
   Attachment, 
-  AttachmentWithThumbnail 
+  AttachmentWithThumbnail,
+  Message
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { 
@@ -196,6 +199,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 from: userId // Ensure the from field is correct
               }
             }));
+          }
+        }
+        
+        // Handle message reactions via WebSocket
+        else if (message.type === 'add_reaction' && userId && message.messageId && message.reaction) {
+          try {
+            // Get the message
+            const msg = await storage.getMessageById(message.messageId);
+            if (!msg) return;
+            
+            // Add the reaction
+            const reaction = await storage.addMessageReaction({
+              messageId: message.messageId,
+              userId,
+              reaction: message.reaction
+            });
+            
+            // Get user data
+            const user = await storage.getUser(userId);
+            if (!user) return;
+            const { password, ...userWithoutPassword } = user;
+            
+            const reactionWithUser = {
+              ...reaction,
+              user: userWithoutPassword
+            };
+            
+            // Get the conversation to notify other participants
+            const conversation = await storage.getConversationById(msg.conversationId);
+            if (!conversation) return;
+            
+            // Notify other users
+            if (conversation.isGroup) {
+              const members = await storage.getGroupMembers(conversation.id);
+              for (const member of members) {
+                if (member.userId !== userId) {
+                  const memberWs = wsClients.get(member.userId);
+                  if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                    memberWs.send(JSON.stringify({
+                      type: 'message_reaction',
+                      conversationId: conversation.id,
+                      messageId: message.messageId,
+                      reaction: reactionWithUser
+                    }));
+                  }
+                }
+              }
+            } else {
+              const otherUserId = conversation.user1Id === userId 
+                ? conversation.user2Id 
+                : conversation.user1Id;
+                
+              if (otherUserId) {
+                const otherUserWs = wsClients.get(otherUserId);
+                if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+                  otherUserWs.send(JSON.stringify({
+                    type: 'message_reaction',
+                    conversationId: conversation.id,
+                    messageId: message.messageId,
+                    reaction: reactionWithUser
+                  }));
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error handling add_reaction:', error);
+          }
+        }
+        
+        // Handle message edits via WebSocket
+        else if (message.type === 'edit_message' && userId && message.messageId && message.content) {
+          try {
+            // Get the message
+            const msg = await storage.getMessageById(message.messageId);
+            if (!msg) return;
+            
+            // Verify the user is the sender
+            if (msg.senderId !== userId) return;
+            
+            // Optional encryption details
+            const encryptionDetails = message.isEncrypted ? {
+              isEncrypted: true,
+              encryptionType: message.encryptionType || 'sodium',
+              nonce: message.nonce
+            } : undefined;
+            
+            // Edit the message
+            const updatedMessage = await storage.editMessage(
+              message.messageId,
+              message.content,
+              encryptionDetails
+            );
+            
+            // Get user data
+            const user = await storage.getUser(userId);
+            if (!user) return;
+            const { password, ...userWithoutPassword } = user;
+            
+            // Get edit history
+            const edits = await storage.getMessageEdits(message.messageId);
+            
+            const messageWithUser = {
+              ...updatedMessage,
+              sender: userWithoutPassword,
+              edits
+            };
+            
+            // Get the conversation to notify other participants
+            const conversation = await storage.getConversationById(msg.conversationId);
+            if (!conversation) return;
+            
+            // Notify other users
+            if (conversation.isGroup) {
+              const members = await storage.getGroupMembers(conversation.id);
+              for (const member of members) {
+                if (member.userId !== userId) {
+                  const memberWs = wsClients.get(member.userId);
+                  if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                    memberWs.send(JSON.stringify({
+                      type: 'message_edited',
+                      message: messageWithUser
+                    }));
+                  }
+                }
+              }
+            } else {
+              const otherUserId = conversation.user1Id === userId 
+                ? conversation.user2Id 
+                : conversation.user1Id;
+                
+              if (otherUserId) {
+                const otherUserWs = wsClients.get(otherUserId);
+                if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+                  otherUserWs.send(JSON.stringify({
+                    type: 'message_edited',
+                    message: messageWithUser
+                  }));
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error handling edit_message:', error);
+          }
+        }
+        
+        // Handle message deletion via WebSocket
+        else if (message.type === 'delete_message' && userId && message.messageId) {
+          try {
+            // Get the message
+            const msg = await storage.getMessageById(message.messageId);
+            if (!msg) return;
+            
+            // Verify the user is the sender
+            if (msg.senderId !== userId) return;
+            
+            // Delete the message
+            await storage.deleteMessage(message.messageId);
+            
+            // Get the conversation to notify other participants
+            const conversation = await storage.getConversationById(msg.conversationId);
+            if (!conversation) return;
+            
+            // Notify other users
+            if (conversation.isGroup) {
+              const members = await storage.getGroupMembers(conversation.id);
+              for (const member of members) {
+                if (member.userId !== userId) {
+                  const memberWs = wsClients.get(member.userId);
+                  if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                    memberWs.send(JSON.stringify({
+                      type: 'message_deleted',
+                      conversationId: conversation.id,
+                      messageId: message.messageId
+                    }));
+                  }
+                }
+              }
+            } else {
+              const otherUserId = conversation.user1Id === userId 
+                ? conversation.user2Id 
+                : conversation.user1Id;
+                
+              if (otherUserId) {
+                const otherUserWs = wsClients.get(otherUserId);
+                if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+                  otherUserWs.send(JSON.stringify({
+                    type: 'message_deleted',
+                    conversationId: conversation.id,
+                    messageId: message.messageId
+                  }));
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error handling delete_message:', error);
           }
         }
       } catch (error) {
@@ -485,6 +683,790 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message reaction endpoints
+  
+  // Add a reaction to a message
+  app.post('/api/messages/:messageId/reactions', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const messageId = parseInt(req.params.messageId);
+      
+      // Get the message to check if it exists and if the user has access to it
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      // Get the conversation to verify access rights
+      const conversation = await storage.getConversationById(message.conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      // Verify user is part of the conversation
+      const isGroupConversation = conversation.isGroup;
+      if (isGroupConversation) {
+        // For group chats, check if user is a member
+        const members = await storage.getGroupMembers(conversation.id);
+        const isMember = members.some(member => member.userId === currentUser.id);
+        if (!isMember) {
+          return res.status(403).send('You are not a member of this conversation');
+        }
+      } else {
+        // For direct messages, check if user is part of the conversation
+        if (conversation.user1Id !== currentUser.id && conversation.user2Id !== currentUser.id) {
+          return res.status(403).send('Access denied');
+        }
+      }
+      
+      // Create the reaction
+      const reactionData = insertMessageReactionSchema.parse({
+        messageId,
+        userId: currentUser.id,
+        reaction: req.body.reaction
+      });
+      
+      const reaction = await storage.addMessageReaction(reactionData);
+      
+      // Get user data to include in response
+      const { password, ...userWithoutPassword } = currentUser;
+      const reactionWithUser = {
+        ...reaction,
+        user: userWithoutPassword
+      };
+      
+      // Notify other users in the conversation via WebSocket
+      if (isGroupConversation) {
+        // For group chats, notify all members except the current user
+        const members = await storage.getGroupMembers(conversation.id);
+        for (const member of members) {
+          if (member.userId !== currentUser.id) {
+            const memberWs = wsClients.get(member.userId);
+            if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+              memberWs.send(JSON.stringify({
+                type: 'message_reaction',
+                conversationId: conversation.id,
+                messageId,
+                reaction: reactionWithUser
+              }));
+            }
+          }
+        }
+      } else {
+        // For direct messages, notify the other user
+        const otherUserId = conversation.user1Id === currentUser.id 
+          ? conversation.user2Id 
+          : conversation.user1Id;
+          
+        if (otherUserId) {
+          const otherUserWs = wsClients.get(otherUserId);
+          if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+            otherUserWs.send(JSON.stringify({
+              type: 'message_reaction',
+              conversationId: conversation.id,
+              messageId,
+              reaction: reactionWithUser
+            }));
+          }
+        }
+      }
+      
+      res.status(201).json(reactionWithUser);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      console.error('Error adding reaction:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Remove a reaction from a message
+  app.delete('/api/messages/:messageId/reactions/:reaction', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const messageId = parseInt(req.params.messageId);
+      const reaction = req.params.reaction;
+      
+      // Get the message to check if it exists
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      await storage.removeMessageReaction(messageId, currentUser.id, reaction);
+      
+      // Get the conversation to notify other users
+      const conversation = await storage.getConversationById(message.conversationId);
+      if (conversation) {
+        // Notify other users that the reaction was removed
+        if (conversation.isGroup) {
+          // For group chats, notify all members except the current user
+          const members = await storage.getGroupMembers(conversation.id);
+          for (const member of members) {
+            if (member.userId !== currentUser.id) {
+              const memberWs = wsClients.get(member.userId);
+              if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                memberWs.send(JSON.stringify({
+                  type: 'message_reaction_removed',
+                  conversationId: conversation.id,
+                  messageId,
+                  userId: currentUser.id,
+                  reaction
+                }));
+              }
+            }
+          }
+        } else {
+          // For direct messages, notify the other user
+          const otherUserId = conversation.user1Id === currentUser.id 
+            ? conversation.user2Id 
+            : conversation.user1Id;
+            
+          if (otherUserId) {
+            const otherUserWs = wsClients.get(otherUserId);
+            if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+              otherUserWs.send(JSON.stringify({
+                type: 'message_reaction_removed',
+                conversationId: conversation.id,
+                messageId,
+                userId: currentUser.id,
+                reaction
+              }));
+            }
+          }
+        }
+      }
+      
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Get all reactions for a message
+  app.get('/api/messages/:messageId/reactions', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const messageId = parseInt(req.params.messageId);
+      
+      // Get the message to check if it exists
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      const reactions = await storage.getMessageReactions(messageId);
+      res.json(reactions);
+    } catch (error) {
+      console.error('Error getting reactions:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Message editing endpoints
+  
+  // Edit a message
+  app.put('/api/messages/:messageId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const messageId = parseInt(req.params.messageId);
+      
+      // Get the message to check if it exists and if the user has access to it
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      // Verify the user is the sender of the message
+      if (message.senderId !== currentUser.id) {
+        return res.status(403).send('You can only edit your own messages');
+      }
+      
+      // Check if the message is deleted (can't edit deleted messages)
+      if (message.isDeleted) {
+        return res.status(400).send('Cannot edit a deleted message');
+      }
+      
+      // Optional encryption details
+      const encryptionDetails = req.body.isEncrypted ? {
+        isEncrypted: true,
+        encryptionType: req.body.encryptionType || 'sodium',
+        nonce: req.body.nonce
+      } : undefined;
+      
+      // Edit the message
+      const updatedMessage = await storage.editMessage(
+        messageId, 
+        req.body.content,
+        encryptionDetails
+      );
+      
+      // Get sender info for the response
+      const { password, ...senderWithoutPassword } = currentUser;
+      
+      // Get message edits history
+      const edits = await storage.getMessageEdits(messageId);
+      
+      const messageWithUser = {
+        ...updatedMessage,
+        sender: senderWithoutPassword,
+        edits
+      };
+      
+      // Get the conversation to notify other users
+      const conversation = await storage.getConversationById(message.conversationId);
+      if (conversation) {
+        // Notify other users that the message was edited
+        if (conversation.isGroup) {
+          // For group chats, notify all members except the current user
+          const members = await storage.getGroupMembers(conversation.id);
+          for (const member of members) {
+            if (member.userId !== currentUser.id) {
+              const memberWs = wsClients.get(member.userId);
+              if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                memberWs.send(JSON.stringify({
+                  type: 'message_edited',
+                  message: messageWithUser
+                }));
+              }
+            }
+          }
+        } else {
+          // For direct messages, notify the other user
+          const otherUserId = conversation.user1Id === currentUser.id 
+            ? conversation.user2Id 
+            : conversation.user1Id;
+            
+          if (otherUserId) {
+            const otherUserWs = wsClients.get(otherUserId);
+            if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+              otherUserWs.send(JSON.stringify({
+                type: 'message_edited',
+                message: messageWithUser
+              }));
+            }
+          }
+        }
+      }
+      
+      res.json(messageWithUser);
+    } catch (error) {
+      console.error('Error editing message:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Get edit history for a message
+  app.get('/api/messages/:messageId/edits', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const messageId = parseInt(req.params.messageId);
+      
+      // Get the message to check if it exists
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      const edits = await storage.getMessageEdits(messageId);
+      res.json(edits);
+    } catch (error) {
+      console.error('Error getting message edits:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Delete a message
+  app.delete('/api/messages/:messageId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const messageId = parseInt(req.params.messageId);
+      
+      // Get the message to check if it exists and if the user has access to it
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      // Verify the user is the sender of the message
+      if (message.senderId !== currentUser.id) {
+        return res.status(403).send('You can only delete your own messages');
+      }
+      
+      // Delete the message
+      await storage.deleteMessage(messageId);
+      
+      // Get the conversation to notify other users
+      const conversation = await storage.getConversationById(message.conversationId);
+      if (conversation) {
+        // Notify other users that the message was deleted
+        if (conversation.isGroup) {
+          // For group chats, notify all members except the current user
+          const members = await storage.getGroupMembers(conversation.id);
+          for (const member of members) {
+            if (member.userId !== currentUser.id) {
+              const memberWs = wsClients.get(member.userId);
+              if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+                memberWs.send(JSON.stringify({
+                  type: 'message_deleted',
+                  conversationId: conversation.id,
+                  messageId
+                }));
+              }
+            }
+          }
+        } else {
+          // For direct messages, notify the other user
+          const otherUserId = conversation.user1Id === currentUser.id 
+            ? conversation.user2Id 
+            : conversation.user1Id;
+            
+          if (otherUserId) {
+            const otherUserWs = wsClients.get(otherUserId);
+            if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+              otherUserWs.send(JSON.stringify({
+                type: 'message_deleted',
+                conversationId: conversation.id,
+                messageId
+              }));
+            }
+          }
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Forward a message
+  app.post('/api/messages/:messageId/forward', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const messageId = parseInt(req.params.messageId);
+      const { conversationId, receiverId } = req.body;
+      
+      if (!conversationId) {
+        return res.status(400).send('ConversationId is required');
+      }
+      
+      // Get the message to check if it exists
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).send('Message not found');
+      }
+      
+      // Get the target conversation to check if it exists and if the user has access to it
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      // Verify the user is part of the target conversation
+      if (conversation.isGroup) {
+        // For group chats, check if user is a member
+        const members = await storage.getGroupMembers(conversation.id);
+        const isMember = members.some(member => member.userId === currentUser.id);
+        if (!isMember) {
+          return res.status(403).send('You are not a member of this conversation');
+        }
+      } else {
+        // For direct messages, check if user is part of the conversation
+        if (conversation.user1Id !== currentUser.id && conversation.user2Id !== currentUser.id) {
+          return res.status(403).send('Access denied');
+        }
+      }
+      
+      // Forward the message
+      const forwardedMessage = await storage.forwardMessage(
+        messageId,
+        conversationId,
+        currentUser.id,
+        conversation.isGroup ? undefined : receiverId
+      );
+      
+      // Get sender info for the response
+      const { password, ...senderWithoutPassword } = currentUser;
+      
+      // Get the original message for the response
+      const originalMessage = await storage.getMessageById(messageId);
+      
+      const messageWithUser = {
+        ...forwardedMessage,
+        sender: senderWithoutPassword,
+        forwardedFrom: originalMessage
+      };
+      
+      // Notify recipients of the new message
+      if (conversation.isGroup) {
+        // For group chats, notify all members except the current user
+        const members = await storage.getGroupMembers(conversation.id);
+        for (const member of members) {
+          if (member.userId !== currentUser.id) {
+            const memberWs = wsClients.get(member.userId);
+            if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+              memberWs.send(JSON.stringify({
+                type: 'new_message',
+                message: messageWithUser
+              }));
+            }
+          }
+        }
+      } else {
+        // For direct messages, notify the other user
+        const otherUserId = conversation.user1Id === currentUser.id 
+          ? conversation.user2Id 
+          : conversation.user1Id;
+          
+        if (otherUserId) {
+          const otherUserWs = wsClients.get(otherUserId);
+          if (otherUserWs && otherUserWs.readyState === WebSocket.OPEN) {
+            otherUserWs.send(JSON.stringify({
+              type: 'new_message',
+              message: messageWithUser
+            }));
+          }
+        }
+      }
+      
+      res.status(201).json(messageWithUser);
+    } catch (error) {
+      console.error('Error forwarding message:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Group conversation endpoints
+  
+  // Create a group conversation
+  app.post('/api/group-conversations', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const { groupName, memberIds } = req.body;
+      
+      if (!groupName) {
+        return res.status(400).send('Group name is required');
+      }
+      
+      if (!Array.isArray(memberIds) || memberIds.length === 0) {
+        return res.status(400).send('At least one member is required');
+      }
+      
+      // Create the group conversation
+      const conversation = await storage.createGroupConversation(
+        { groupName, groupAvatar: req.body.groupAvatar },
+        currentUser.id
+      );
+      
+      // Add members to the group
+      for (const memberId of memberIds) {
+        if (memberId !== currentUser.id) { // Creator is already added
+          await storage.addGroupMember({
+            conversationId: conversation.id,
+            userId: memberId,
+            role: 'member',
+            addedById: currentUser.id,
+            isActive: true
+          });
+        }
+      }
+      
+      // Get all members with user info
+      const members = await storage.getGroupMembers(conversation.id);
+      
+      const conversationWithMembers = {
+        ...conversation,
+        members: members.map(m => m.user)
+      };
+      
+      // Notify all members that they've been added to a group
+      for (const member of members) {
+        if (member.userId !== currentUser.id) {
+          const memberWs = wsClients.get(member.userId);
+          if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+            memberWs.send(JSON.stringify({
+              type: 'group_created',
+              conversation: conversationWithMembers
+            }));
+          }
+        }
+      }
+      
+      res.status(201).json(conversationWithMembers);
+    } catch (error) {
+      console.error('Error creating group conversation:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Get group members
+  app.get('/api/group-conversations/:id/members', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const conversationId = parseInt(req.params.id);
+      
+      // Get the conversation to check if it exists and is a group
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      if (!conversation.isGroup) {
+        return res.status(400).send('This is not a group conversation');
+      }
+      
+      // Verify the user is a member of the group
+      const members = await storage.getGroupMembers(conversationId);
+      const isMember = members.some(member => member.userId === currentUser.id);
+      if (!isMember) {
+        return res.status(403).send('You are not a member of this group');
+      }
+      
+      res.json(members);
+    } catch (error) {
+      console.error('Error getting group members:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Add a member to a group
+  app.post('/api/group-conversations/:id/members', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const conversationId = parseInt(req.params.id);
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).send('UserId is required');
+      }
+      
+      // Get the conversation to check if it exists and is a group
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      if (!conversation.isGroup) {
+        return res.status(400).send('This is not a group conversation');
+      }
+      
+      // Verify the current user is an admin of the group
+      const members = await storage.getGroupMembers(conversationId);
+      const currentMember = members.find(member => member.userId === currentUser.id);
+      if (!currentMember || currentMember.role !== 'admin') {
+        return res.status(403).send('Only admins can add members');
+      }
+      
+      // Check if user is already a member
+      const isAlreadyMember = members.some(member => member.userId === userId);
+      if (isAlreadyMember) {
+        return res.status(400).send('User is already a member of this group');
+      }
+      
+      // Add the member
+      const memberData = insertGroupMemberSchema.parse({
+        conversationId,
+        userId,
+        role: 'member',
+        addedById: currentUser.id,
+        isActive: true
+      });
+      
+      const member = await storage.addGroupMember(memberData);
+      
+      // Get user data
+      const user = await storage.getUser(userId);
+      if (user) {
+        const { password, ...userWithoutPassword } = user;
+        const memberWithUser = {
+          ...member,
+          user: userWithoutPassword
+        };
+        
+        // Notify the added user
+        const userWs = wsClients.get(userId);
+        if (userWs && userWs.readyState === WebSocket.OPEN) {
+          userWs.send(JSON.stringify({
+            type: 'added_to_group',
+            conversationId,
+            conversation
+          }));
+        }
+        
+        // Notify other members
+        for (const existingMember of members) {
+          if (existingMember.userId !== currentUser.id) {
+            const memberWs = wsClients.get(existingMember.userId);
+            if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+              memberWs.send(JSON.stringify({
+                type: 'member_added',
+                conversationId,
+                member: memberWithUser
+              }));
+            }
+          }
+        }
+        
+        res.status(201).json(memberWithUser);
+      } else {
+        res.status(404).send('User not found');
+      }
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      console.error('Error adding group member:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Remove a member from a group
+  app.delete('/api/group-conversations/:id/members/:userId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const conversationId = parseInt(req.params.id);
+      const userId = parseInt(req.params.userId);
+      
+      // Get the conversation to check if it exists and is a group
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      if (!conversation.isGroup) {
+        return res.status(400).send('This is not a group conversation');
+      }
+      
+      // Verify the current user is an admin of the group or is removing themselves
+      const members = await storage.getGroupMembers(conversationId);
+      const currentMember = members.find(member => member.userId === currentUser.id);
+      
+      if (userId !== currentUser.id) { // Not leaving the group
+        if (!currentMember || currentMember.role !== 'admin') {
+          return res.status(403).send('Only admins can remove members');
+        }
+      }
+      
+      // Check if user is a member
+      const memberToRemove = members.find(member => member.userId === userId);
+      if (!memberToRemove) {
+        return res.status(404).send('User is not a member of this group');
+      }
+      
+      // Remove the member
+      await storage.removeGroupMember(conversationId, userId);
+      
+      // Notify the removed user
+      const userWs = wsClients.get(userId);
+      if (userWs && userWs.readyState === WebSocket.OPEN) {
+        userWs.send(JSON.stringify({
+          type: 'removed_from_group',
+          conversationId
+        }));
+      }
+      
+      // Notify other members
+      for (const member of members) {
+        if (member.userId !== currentUser.id && member.userId !== userId) {
+          const memberWs = wsClients.get(member.userId);
+          if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+            memberWs.send(JSON.stringify({
+              type: 'member_removed',
+              conversationId,
+              userId
+            }));
+          }
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error removing group member:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
+  // Update group conversation details
+  app.put('/api/group-conversations/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send('Unauthorized');
+    
+    try {
+      const currentUser = req.user as User;
+      const conversationId = parseInt(req.params.id);
+      const { groupName, groupAvatar } = req.body;
+      
+      // Get the conversation to check if it exists and is a group
+      const conversation = await storage.getConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      if (!conversation.isGroup) {
+        return res.status(400).send('This is not a group conversation');
+      }
+      
+      // Verify the current user is an admin of the group
+      const members = await storage.getGroupMembers(conversationId);
+      const currentMember = members.find(member => member.userId === currentUser.id);
+      if (!currentMember || currentMember.role !== 'admin') {
+        return res.status(403).send('Only admins can update group details');
+      }
+      
+      // Update the conversation
+      const updatedConversation = await storage.updateGroupConversation(conversationId, {
+        groupName: groupName || conversation.groupName,
+        groupAvatar: groupAvatar !== undefined ? groupAvatar : conversation.groupAvatar,
+        updatedAt: new Date()
+      });
+      
+      if (!updatedConversation) {
+        return res.status(404).send('Conversation not found');
+      }
+      
+      // Notify all members
+      for (const member of members) {
+        if (member.userId !== currentUser.id) {
+          const memberWs = wsClients.get(member.userId);
+          if (memberWs && memberWs.readyState === WebSocket.OPEN) {
+            memberWs.send(JSON.stringify({
+              type: 'group_updated',
+              conversation: updatedConversation
+            }));
+          }
+        }
+      }
+      
+      res.json(updatedConversation);
+    } catch (error) {
+      console.error('Error updating group conversation:', error);
+      res.status(500).send('Server error');
+    }
+  });
+  
   // File upload and attachments endpoints
   
   // Upload file and attach to a message

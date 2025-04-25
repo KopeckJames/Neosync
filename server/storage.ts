@@ -47,6 +47,7 @@ export interface IStorage {
   // Message methods
   createMessage(message: InsertMessage): Promise<Message>;
   getMessages(conversationId: number): Promise<MessageWithUser[]>;
+  getMessageById(messageId: number): Promise<MessageWithUser | undefined>;
   markMessagesAsRead(conversationId: number, userId: number): Promise<void>;
   editMessage(messageId: number, newContent: string, encryptionDetails?: { isEncrypted: boolean, encryptionType: string, nonce: string }): Promise<Message>;
   deleteMessage(messageId: number): Promise<void>;
@@ -419,8 +420,8 @@ export class MemStorage implements IStorage {
     return Array.from(messageMap.values());
   }
   
-  // Helper method to get a single message with user info by ID
-  private async getMessageById(messageId: number): Promise<MessageWithUser | undefined> {
+  // Get a single message with user info by ID
+  async getMessageById(messageId: number): Promise<MessageWithUser | undefined> {
     const message = this.messages.get(messageId);
     if (!message) return undefined;
     
